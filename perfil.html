@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu Perfil — DRIVE</title>
+  <link rel="stylesheet" href="perfil.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+<header class="profile-header">
+  <a class="logo" href="index.html"><span>DRIVE</span><small>GLOBAL CAR MARKET</small></a>
+  <a class="back-link" href="index.html"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+</header>
+
+<main class="profile-page">
+  <section class="profile-hero">
+    <div class="avatar"><i class="fa-regular fa-user"></i></div>
+    <div>
+      <p class="eyebrow">MINHA CONTA</p>
+      <h1 id="profileTitle">Meu Perfil</h1>
+      <p id="profileSubtitle">Os teus dados pessoais</p>
+    </div>
+  </section>
+
+  <div id="loadingState" class="state-card">
+    <i class="fa-solid fa-spinner fa-spin"></i>
+    <p>A carregar os dados da tua conta...</p>
+  </div>
+
+  <div id="loginState" class="state-card hidden">
+    <i class="fa-regular fa-circle-user"></i>
+    <h2>Entra na tua conta</h2>
+    <p>Precisas estar conectado para ver os teus dados de perfil.</p>
+    <a class="primary-btn" href="index.html">Entrar / Criar conta</a>
+  </div>
+
+  <section id="profileContent" class="profile-content hidden">
+    <div id="message" class="message hidden"></div>
+
+    <div class="profile-card">
+      <div class="card-heading">
+        <div>
+          <h2><i class="fa-regular fa-id-card"></i> Dados do perfil</h2>
+          <p>Estas informações ficam associadas à tua conta.</p>
+        </div>
+        <button id="editBtn" class="outline-btn" type="button">
+          <i class="fa-solid fa-pen"></i> Editar
+        </button>
+      </div>
+
+      <form id="profileForm">
+        <div class="field">
+          <label for="profileName">Nome completo</label>
+          <div class="input-wrap">
+            <i class="fa-regular fa-user"></i>
+            <input id="profileName" type="text" autocomplete="name" disabled required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="profilePhone">Número de telefone</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-phone"></i>
+            <input id="profilePhone" type="tel" autocomplete="tel" disabled>
+          </div>
+        </div>
+
+        <div class="field full">
+          <label for="profileEmail">Email</label>
+          <div class="input-wrap">
+            <i class="fa-regular fa-envelope"></i>
+            <input id="profileEmail" type="email" disabled>
+          </div>
+          <small>O email de login não é alterado nesta área.</small>
+        </div>
+
+        <div class="field full account-date">
+          <label>Conta criada em</label>
+          <div class="date-value">
+            <i class="fa-regular fa-calendar"></i>
+            <span id="profileCreated">—</span>
+          </div>
+        </div>
+
+        <div id="editActions" class="edit-actions hidden">
+          <button id="cancelBtn" class="outline-btn" type="button">Cancelar</button>
+          <button id="saveBtn" class="primary-btn" type="submit">
+            <i class="fa-solid fa-check"></i> Guardar alterações
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div class="profile-card security-card">
+      <div class="card-heading">
+        <div>
+          <h2><i class="fa-solid fa-lock"></i> Segurança</h2>
+          <p>Atualiza a palavra-passe da tua conta.</p>
+        </div>
+      </div>
+
+      <form id="passwordForm">
+        <div class="field full">
+          <label for="newPassword">Nova palavra-passe</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-key"></i>
+            <input id="newPassword" type="password" minlength="8" autocomplete="new-password"
+                   placeholder="Mínimo 8 caracteres" required>
+            <button class="show-pass" type="button" data-target="newPassword" aria-label="Mostrar palavra-passe">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="field full">
+          <label for="confirmPassword">Confirmar palavra-passe</label>
+          <div class="input-wrap">
+            <i class="fa-solid fa-key"></i>
+            <input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"
+                   placeholder="Repete a nova palavra-passe" required>
+            <button class="show-pass" type="button" data-target="confirmPassword" aria-label="Mostrar palavra-passe">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button class="primary-btn" type="submit">
+          <i class="fa-solid fa-shield-halved"></i> Alterar palavra-passe
+        </button>
+      </form>
+    </div>
+
+    <section class="profile-card danger-zone">
+      <div class="card-heading">
+        <div>
+          <h2><i class="fa-solid fa-triangle-exclamation"></i> Zona de perigo</h2>
+          <p>A eliminação da conta é permanente e não pode ser desfeita.</p>
+        </div>
+      </div>
+      <button id="deleteAccountBtn" class="delete-btn" type="button">
+        <i class="fa-solid fa-trash"></i> Eliminar minha conta
+      </button>
+    </section>
+
+    <div class="profile-actions">
+      <a href="favoritos.html" class="action-link"><i class="fa-regular fa-heart"></i> Meus favoritos</a>
+      <button id="logoutBtn" class="logout-btn" type="button"><i class="fa-solid fa-right-from-bracket"></i> Terminar sessão</button>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<div id="deleteConfirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+  <div class="modal-box">
+    <button id="closeDeleteModal" class="modal-close" type="button" aria-label="Fechar">&times;</button>
+    <div class="modal-icon"><i class="fa-solid fa-trash"></i></div>
+    <h2 id="deleteModalTitle">Eliminar a tua conta?</h2>
+    <p>Esta ação é permanente. O teu perfil e a tua conta serão eliminados. Tens a certeza?</p>
+    <div class="modal-actions">
+      <button id="cancelDelete" class="outline-btn" type="button">Cancelar</button>
+      <button id="confirmDelete" class="delete-btn" type="button">Sim, eliminar</button>
+    </div>
+  </div>
+</div>
+<script src="perfil.js"></script>
+</body>
+</html>

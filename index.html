@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="google-site-verification" content="ef0guAb7B4zT041IA3zyQw9260Szh5Q1IduLtYkTArc" />
+  <title>DRIVE — Carros do Japão</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+<header class="header">
+  <a class="logo" href="index.html"><span>DRIVE</span><small>GLOBAL CAR MARKET</small></a>
+  <nav class="top-actions">
+    <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Conecte-se</span></a>
+    <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span><b id="favCount">0</b></a>
+    <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
+  </nav>
+</header>
+
+<div id="mobileMenu" class="mobile-menu">
+  <a href="#marcas">Marcas</a><a href="#precos">Preços</a><a href="#carrocerias">Carrocerias</a>
+  <a href="#modelos">Modelos mais vistos</a><a href="favoritos.html">Favoritos</a>
+  <a href="admin.html" data-admin-only class="admin-only" style="display:none">Administração</a>
+</div>
+
+<main>
+<section class="hero">
+  <div class="hero-overlay">
+    <div class="hero-search">
+      <input id="quickSearch" placeholder="Pesquise por ID de estoque ou palavras-chave">
+      <button onclick="doQuickSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+    <h1>DRIVE WHAT'S NEXT</h1>
+    <p id="stockTotal">284.479 ~ Carros</p>
+  </div>
+</section>
+
+<section class="filter-card">
+  <div class="filter-row" onclick="openFilter('brand')">
+    <div><label>Marca e modelo</label><span id="brandText">Selecione uma marca e modelo</span></div><i class="fa-solid fa-circle-plus"></i>
+  </div>
+  <div class="filter-row" onclick="openFilter('body')">
+    <div><label>Tipo de Carroceria</label><span id="bodyText">Selecione o tipo de carroceria</span></div><i class="fa-solid fa-circle-plus"></i>
+  </div>
+  <div class="filter-row" onclick="openFilter('price')">
+    <div><label>Preço do veículo</label><span id="priceText">Selecione faixa de preço do veículo</span></div><i class="fa-solid fa-circle-plus"></i>
+  </div>
+  <div class="filter-row" onclick="openFilter('year')">
+    <div><label>Ano</label><span id="yearText">Selecione faixa de ano</span></div><i class="fa-solid fa-circle-plus"></i>
+  </div>
+  <div class="filter-row" onclick="openFilter('km')">
+    <div><label>Quilometragem</label><span id="kmText">Selecione Quilometragem (km)</span></div><i class="fa-solid fa-circle-plus"></i>
+  </div>
+  <button class="search-main" onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> Procurar</button>
+</section>
+
+<div id="filterModal" class="modal">
+  <div class="modal-box">
+    <button class="close" onclick="closeFilter()">×</button>
+    <h2 id="modalTitle">Filtro</h2>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<section class="banner-strip">
+  <div class="promo">TOYOTA <strong>FESTIVAL</strong><small>Mais de 28.000 carros disponíveis</small></div>
+  <div class="promo dark">WEEKLY <strong>RED TAG SALE</strong><small>VEJA O STOCK</small></div>
+</section>
+
+<section id="marcas" class="content-section">
+  <h2 class="red-title">Navegar Por Marca De Carro</h2>
+  <div id="brandGrid" class="brand-grid"></div>
+  <button class="show-more" onclick="showMore('brands')">Mostrar mais <i class="fa-solid fa-chevron-down"></i></button>
+</section>
+
+<section id="precos" class="content-section">
+  <h2 class="red-title">Procurar Por Preço Do Veículo</h2>
+  <div class="choice-grid">
+    <button onclick="setPrice(0,1000)">Abaixo de $1,000<br><small id="pc0">(270)</small></button>
+    <button onclick="setPrice(1001,2000)">$1,001 - $2,000<br><small>(120)</small></button>
+    <button onclick="setPrice(2001,3000)">$2,001 - $3,000<br><small>(95)</small></button>
+    <button onclick="setPrice(3001,4000)">$3,001 - $4,000<br><small>(74)</small></button>
+    <button onclick="setPrice(4001,5000)">$4,001 - $5,000<br><small>(58)</small></button>
+    <button onclick="setPrice(5001,9999999)">Acima de $5,001<br><small>(460)</small></button>
+  </div>
+</section>
+
+<section class="content-section">
+  <h2 class="red-title">Procurar Por Desconto</h2>
+  <div class="choice-grid">
+    <button onclick="setDiscount(50)">50% de desconto ou mais</button>
+    <button onclick="setDiscount(40)">40% de desconto ou mais</button>
+    <button onclick="setDiscount(30)">30% de desconto ou mais</button>
+    <button onclick="setDiscount(20)">20% de desconto ou mais</button>
+    <button onclick="setDiscount(10)">10% de desconto ou mais</button>
+    <button onclick="setDiscount(1)">1-10% de desconto</button>
+  </div>
+</section>
+
+<section id="carrocerias" class="content-section">
+  <h2 class="red-title">Procurar Tipo De Carroceria</h2>
+  <div id="bodyGrid" class="body-grid"></div>
+  <button class="show-more" onclick="showMore('body')">Mostrar mais <i class="fa-solid fa-chevron-down"></i></button>
+</section>
+
+<section id="modelos" class="content-section">
+  <h2 class="section-heading">Modelos mais vistos</h2>
+  <div id="popularModels" class="popular-list"></div>
+</section>
+
+<section class="content-section">
+  <h2 class="section-heading">Tags populares</h2>
+  <div class="tags">
+    <button onclick="tagSearch('Japan Inventory')">Japan Inventory</button>
+    <button onclick="tagSearch('SUV')">SUV</button>
+    <button onclick="tagSearch('Pick up')">Pick up</button>
+    <button onclick="tagSearch('4WD')">4WD</button>
+    <button onclick="tagSearch('Hybrid')">Hybrid</button>
+  </div>
+</section>
+
+<section class="content-section">
+  <h2 class="section-heading">Visualizado recentemente</h2>
+  <div id="recentCars" class="recent-list"></div>
+</section>
+
+<section id="results" class="results-section">
+  <div class="results-head"><h2>Carros disponíveis</h2><button onclick="clearFilters()">Limpar filtros</button></div>
+  <div id="resultsGrid" class="car-grid"></div>
+</section>
+</main>
+
+
+<div id="clientModal" class="modal">
+  <div class="modal-box client-box">
+    <button class="close" onclick="closeClientModal()">×</button>
+    <div id="clientLoginView">
+      <h2>Entrar na sua conta</h2>
+      <form id="clientLoginForm" class="client-form">
+        <input id="loginEmail" type="email" required placeholder="Email">
+        <input id="loginPass" type="password" required placeholder="Senha">
+        <button type="submit">Entrar</button>
+      </form>
+      <div class="login-extra-actions">
+        <button class="login-link-btn" onclick="showForgotPassword()" type="button">Esqueceu a senha?</button>
+        <span class="login-or">ou</span>
+        <button class="google-login-btn" onclick="loginWithGoogle()" type="button"><i class="fa-brands fa-google"></i> Continuar com Google</button>
+      </div>
+      <p>Ainda não tens conta? <button class="text-btn" onclick="showClientSignup()" type="button">Criar conta</button></p>
+    </div>
+
+    <div id="clientForgotView" style="display:none">
+      <h2>Recuperar senha</h2>
+      <p>Introduza o seu email e enviaremos um link para criar uma nova senha.</p>
+      <form id="forgotPasswordForm" class="client-form">
+        <input id="forgotEmail" type="email" required placeholder="Email">
+        <button type="submit">Enviar link de recuperação</button>
+      </form>
+      <p><button class="text-btn" onclick="showClientLogin()" type="button">Voltar ao login</button></p>
+    </div>
+
+    <div id="clientResetView" style="display:none">
+      <h2>Definir nova senha</h2>
+      <form id="resetPasswordForm" class="client-form">
+        <input id="newResetPass" type="password" minlength="8" required placeholder="Nova senha (mín. 8 caracteres)">
+        <input id="confirmResetPass" type="password" minlength="8" required placeholder="Confirmar nova senha">
+        <button type="submit">Guardar nova senha</button>
+      </form>
+    </div>
+
+    <div id="clientSignupView" style="display:none">
+      <h2>Criar conta</h2>
+      <form id="clientSignupForm" class="client-form"><input id="clientName" required placeholder="Nome completo"><input id="clientPhone" type="tel" required placeholder="Número de telefone"><input id="clientEmail" type="email" required placeholder="Email"><input id="clientPass" type="password" minlength="8" required placeholder="Senha (mín. 8 caracteres)"><input id="clientPassConfirm" type="password" minlength="8" required placeholder="Confirmar senha"><button type="submit">Criar conta</button></form>
+      <p>Já tens conta? <button class="text-btn" onclick="showClientLogin()" type="button">Entrar</button></p>
+    </div>
+    <div id="clientAccountView" style="display:none">
+      <h2>Minha conta</h2>
+      <p id="clientAccountInfo">Conta ativa.</p>
+      <a class="profile-open-btn" href="perfil.html">Ver meu perfil</a>
+      <a id="adminAccountLink" class="profile-open-btn admin-account-link" href="admin.html" style="display:none"><i class="fa-solid fa-shield-halved"></i> Administração</a>
+      <button onclick="clientLogout()">Terminar sessão</button>
+    </div>
+  </div>
+</div>
+<footer>
+  <div class="footer-links">
+    <details><summary>Comprar</summary><a href="#results">Todos os carros</a><a href="#precos">Por preço</a></details>
+    <details><summary>Suporte</summary><a href="#">Ajuda</a><a href="#">Contacto</a></details>
+    <details><summary>Sobre Nós</summary><a href="#">Sobre o Drive</a><a href="#">Como funciona</a></details>
+    <details><summary>Consulta</summary><a href="#">Pedido de cotação</a><a href="#">Envio</a></details>
+  </div>
+  <div class="social"><h3>Conecte-se conosco</h3><p id="footerContact">WhatsApp / Ligar: configure o contacto no painel Admin.</p><div><i class="fa-brands fa-youtube"></i><i class="fa-brands fa-facebook"></i><i class="fa-brands fa-instagram"></i></div></div>
+  <div class="footer-bottom">
+    <p>Notícias do DRIVE ↗</p><p>Boletim de Notícias ↗</p>
+    <label>Escritório Global</label><select><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>
+    <p>🌐 Português / ($) USD⌄</p><p>📍 MOZAMBIQUE⌄</p>
+    <small>Termos de uso<br><br>Política de Privacidade</small>
+  </div>
+</footer>
+<button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
