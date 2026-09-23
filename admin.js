@@ -292,7 +292,16 @@ async function acceptInvite(){
 
 async function claimInvite(token){
   const {data,error}=await sb().rpc("accept_admin_invite",{p_token:token});
-  if(error){alert("Não foi possível concluir o convite: "+error.message);return false;}
+  if(error){
+    const msg=String(error.message||"").toLowerCase();
+    // Tokens antigos/aceites/cancelados não devem bloquear o acesso normal.
+    if(msg.includes("já foi")||msg.includes("já foi utilizado")||msg.includes("cancelado")||msg.includes("expirou")||msg.includes("inválido")){
+      localStorage.removeItem("drivePendingAdminInvite");
+      return false;
+    }
+    console.warn("Convite:",error.message);
+    return false;
+  }
   localStorage.removeItem("drivePendingAdminInvite");
   return data===true||data?.accepted===true||data==="true";
 }
@@ -321,6 +330,21 @@ document.addEventListener("DOMContentLoaded",async()=>{
     const {data:{session}}=await sb().auth.getSession();
     if(session){
       currentAdminUser=session.user;
+      // Se a conta já é administradora, um convite antigo nunca deve
+      // voltar a ser processado nem mostrar erro.
+      const owner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+      let alreadyAdmin=owner;
+      if(!alreadyAdmin){
+        try{
+          const {data}=await sb().rpc("is_current_user_admin");
+          alreadyAdmin=data===true;
+        }catch(e){}
+      }
+      if(alreadyAdmin){
+        localStorage.removeItem("drivePendingAdminInvite");
+        await init();
+        return;
+      }
       const pending=localStorage.getItem("drivePendingAdminInvite");
       if(pending){
         const ok=await claimInvite(pending);

@@ -183,7 +183,14 @@ async function claimPendingAdminInvite(){
   const token=localStorage.getItem("drivePendingAdminInvite");
   if(!token||!window.driveSupabase)return false;
   const {data,error}=await window.driveSupabase.rpc("accept_admin_invite",{p_token:token});
-  if(error){console.warn("Convite:",error.message);return false;}
+  if(error){
+    const msg=String(error.message||"").toLowerCase();
+    // Limpa apenas tokens claramente inválidos/expirados/aceites.
+    if(msg.includes("já foi")||msg.includes("já foi utilizado")||msg.includes("cancelado")||msg.includes("expirou")||msg.includes("inválido"))
+      localStorage.removeItem("drivePendingAdminInvite");
+    console.warn("Convite:",error.message);
+    return false;
+  }
   const ok=data===true||data?.accepted===true||data==="true";
   if(ok)localStorage.removeItem("drivePendingAdminInvite");
   return ok;
