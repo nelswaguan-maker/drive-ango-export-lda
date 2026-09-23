@@ -145,7 +145,7 @@
       <div class="login-extra-actions">
         <button class="login-link-btn" onclick="showForgotPassword()" type="button">Esqueceu a senha?</button>
         <span class="login-or">ou</span>
-        <button class="google-login-btn" onclick="loginWithGoogle()" type="button"><i class="fa-brands fa-google"></i> Continuar com Google</button>
+        <label class="legal-check compact"><input id="googleLegalConsent" type="checkbox"> <span>Aceito a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button class="google-login-btn" id="googleLoginBtn" onclick="loginWithGoogle()" type="button" disabled><i class="fa-brands fa-google"></i> Continuar com Google</button>
       </div>
       <p>Ainda não tens conta? <button class="text-btn" onclick="showClientSignup()" type="button">Criar conta</button></p>
     </div>
@@ -171,7 +171,7 @@
 
     <div id="clientSignupView" style="display:none">
       <h2>Criar conta</h2>
-      <form id="clientSignupForm" class="client-form"><input id="clientName" required placeholder="Nome completo"><input id="clientPhone" type="tel" required placeholder="Número de telefone"><input id="clientEmail" type="email" required placeholder="Email"><input id="clientPass" type="password" minlength="8" required placeholder="Senha (mín. 8 caracteres)"><input id="clientPassConfirm" type="password" minlength="8" required placeholder="Confirmar senha"><button type="submit">Criar conta</button></form>
+      <form id="clientSignupForm" class="client-form"><input id="clientName" required placeholder="Nome completo"><input id="clientPhone" type="tel" required placeholder="Número de telefone"><input id="clientEmail" type="email" required placeholder="Email"><input id="clientPass" type="password" minlength="8" required placeholder="Senha (mín. 8 caracteres)"><input id="clientPassConfirm" type="password" minlength="8" required placeholder="Confirmar senha"><label class="legal-check"><input id="signupLegalConsent" type="checkbox" required> <span>Li e aceito a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button type="submit">Criar conta</button></form>
       <p>Já tens conta? <button class="text-btn" onclick="showClientLogin()" type="button">Entrar</button></p>
     </div>
     <div id="clientAccountView" style="display:none">
@@ -195,7 +195,7 @@
     <p>Notícias do DRIVE ↗</p><p>Boletim de Notícias ↗</p>
     <label>Escritório Global</label><select><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>
     <p>🌐 Português / ($) USD⌄</p><p>📍 MOZAMBIQUE⌄</p>
-    <small>Termos de uso<br><br>Política de Privacidade</small>
+    <small><a href="termos.html">Termos de Uso</a><br><br><a href="politica-privacidade.html">Política de Privacidade</a></small>
   </div>
 </footer>
 <button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>

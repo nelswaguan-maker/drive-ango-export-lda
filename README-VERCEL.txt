@@ -26,3 +26,6 @@ Um deployment inicial no Vercel exige uma ação na conta Vercel. Depois de publ
 
 Nome sugerido do projeto no Vercel: drive-ango-export-lda
 O item “Administração” do menu público só aparece quando a sessão autenticada pertence exatamente ao email proprietário nelswaguan@gmail.com e a função de administrador do Supabase também confirma o acesso.
+
+
+ATUALIZAÇÃO: administração para convidados aparece no menu após login; convites levam ao cadastro na página inicial; cadastro exige aceitação de Política de Privacidade e Termos; veículos suportam até 10 URLs de fotos.

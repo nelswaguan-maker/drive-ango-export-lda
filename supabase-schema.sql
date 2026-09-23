@@ -16,6 +16,8 @@ create table if not exists public.profiles (
 alter table public.profiles enable row level security;
 alter table public.profiles add column if not exists role text not null default 'client';
 alter table public.profiles add column if not exists blocked boolean not null default false;
+alter table public.profiles add column if not exists privacy_accepted_at timestamptz;
+alter table public.profiles add column if not exists terms_accepted_at timestamptz;
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check (role in ('client','admin'));
 
@@ -66,6 +68,8 @@ begin
     name=excluded.name,
     phone=excluded.phone,
     email=excluded.email,
+    privacy_accepted_at=coalesce(excluded.privacy_accepted_at, public.profiles.privacy_accepted_at),
+    terms_accepted_at=coalesce(excluded.terms_accepted_at, public.profiles.terms_accepted_at),
     role=case
       when lower(coalesce(excluded.email,''))=lower('nelswaguan@gmail.com') then 'admin'
       else public.profiles.role

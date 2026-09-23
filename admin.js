@@ -95,12 +95,14 @@ function draw(){
 $("carForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!has("publish")&&!$("editId").value)return;
   readCars();const id=$("editId").value;
-  const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),image:$("image").value.trim()};
+  const images=Array.from({length:10},(_,i)=>$("image"+(i+1))?.value.trim()).filter(Boolean);
+  const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
   if(id){const old=getCar(id);if(!has("edit")){alert("Sem permissão para editar.");return;}Object.assign(old,base);}
   else cars.unshift({id:"DRV"+Date.now(),...base,status:"available",createdAt:Date.now()});
   saveCars();resetCarForm();draw();alert(id?"Carro atualizado.":"Carro publicado.");
 });
-function editCar(id){if(!has("edit"))return;const c=getCar(id);if(!c)return;for(const k of ["brand","model","body","price","year","km","discount","engine","trans","drive","wheel","image"])if($(k))$(k).value=c[k]??"";$("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});}
+function editCar(id){if(!has("edit"))return;const c=getCar(id);if(!c)return;for(const k of ["brand","model","body","price","year","km","discount","engine","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  const imgs=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);for(let i=1;i<=10;i++)if($("image"+i))$("image"+i).value=imgs[i-1]||"";$("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});}
 function resetCarForm(){$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
 function reserveCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="reserved";c.reservedAt=Date.now();c.reservedUntil=Date.now()+48*60*60*1000;saveCars();draw();}
 function sellCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="sold";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
@@ -109,7 +111,7 @@ function removeCar(id){if(!has("delete"))return;if(!confirm("Eliminar este anún
 
 /* ===== CONVITE PELO WHATSAPP ===== */
 function normalizeWhatsApp(phone){return String(phone||"").replace(/[^0-9]/g,"");}
-function inviteUrl(token){return new URL("admin.html?invite="+encodeURIComponent(token),location.href).href;}
+function inviteUrl(token){return new URL("index.html?adminInvite="+encodeURIComponent(token)+"&openSignup=1",location.href).href;}
 function makeWhatsAppUrl(phone,token){
   const digits=normalizeWhatsApp(phone);
   const message=`Olá! Foste convidado(a) para ser administrador do Drive Cars.\n\nAceita o convite aqui: ${inviteUrl(token)}\n\nEste convite é pessoal e deve ser usado para criar a tua conta.`;

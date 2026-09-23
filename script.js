@@ -155,21 +155,67 @@ async function refreshAdminState(user){
   let rpcAdmin=false;
   try{const {data,error}=await window.driveSupabase.rpc("is_current_user_admin");rpcAdmin=!error&&data===true;}catch(e){console.warn("Verificação de administrador:",e);}
   currentClientIsAdmin=isOwner||rpcAdmin;
-  adminLinks.forEach(e=>e.style.display=(currentClientIsAdmin&&isOwner)?"":"none");
+  adminLinks.forEach(e=>e.style.display=currentClientIsAdmin?"":"none");
   if(accountLink)accountLink.style.display=currentClientIsAdmin?"inline-flex":"none";
   return currentClientIsAdmin;
 }
+async function claimPendingAdminInvite(){
+  const token=localStorage.getItem("drivePendingAdminInvite");
+  if(!token||!window.driveSupabase)return false;
+  const {data,error}=await window.driveSupabase.rpc("accept_admin_invite",{p_token:token});
+  if(error){console.warn("Convite:",error.message);return false;}
+  const ok=data===true||data?.accepted===true||data==="true";
+  if(ok)localStorage.removeItem("drivePendingAdminInvite");
+  return ok;
+}
+
+async function requireLegalConsent(user){
+  if(!user||!window.driveSupabase)return true;
+  const {data}=await window.driveSupabase.from("profiles").select("privacy_accepted_at,terms_accepted_at").eq("id",user.id).maybeSingle();
+  if(data?.privacy_accepted_at&&data?.terms_accepted_at)return true;
+  return await showLegalConsentGate();
+}
+function showLegalConsentGate(){
+  return new Promise(resolve=>{
+    if(document.getElementById("legalGate"))return;
+    const wrap=document.createElement("div");wrap.id="legalGate";wrap.className="legal-gate";
+    wrap.innerHTML=`<div class="legal-gate-box"><h2>Antes de continuar</h2><p>Para usar o Drive ANGO Export, confirma que leste e aceitas a Política de Privacidade e os Termos de Uso.</p><label class="legal-check"><input id="gateConsent" type="checkbox"> <span>Aceito a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button id="gateAccept" disabled>Continuar</button></div>`;
+    document.body.appendChild(wrap);
+    const check=wrap.querySelector("#gateConsent"),btn=wrap.querySelector("#gateAccept");
+    check.onchange=()=>btn.disabled=!check.checked;
+    btn.onclick=async()=>{
+      const user=currentClientUser;
+      if(!user){wrap.remove();resolve(false);return;}
+      const now=new Date().toISOString();
+      const {error}=await window.driveSupabase.from("profiles").upsert({id:user.id,email:user.email||"",privacy_accepted_at:now,terms_accepted_at:now},{onConflict:"id"});
+      if(error){alert("Não foi possível guardar a aceitação. Tenta novamente.");return;}
+      wrap.remove();resolve(true);
+    };
+  });
+}
+
 async function clientSignup(e){
   e.preventDefault();
   if(!window.driveSupabase){alert("O cadastro online ainda não foi configurado.");return;}
   const form=e.currentTarget;if(form.dataset.busy==="1")return;
   const name=document.getElementById("clientName").value.trim(),phone=document.getElementById("clientPhone").value.trim(),email=document.getElementById("clientEmail").value.trim().toLowerCase(),pass=document.getElementById("clientPass").value,confirm=document.getElementById("clientPassConfirm").value;
+  if(!document.getElementById("signupLegalConsent")?.checked){alert("É necessário aceitar a Política de Privacidade e os Termos de Uso.");return;}
   if(name.length<2){alert("Introduza o seu nome completo.");return;}if(phone.length<7){alert("Introduza um número de telefone válido.");return;}if(pass.length<8){alert("A senha deve ter pelo menos 8 caracteres.");return;}if(pass!==confirm){alert("As senhas não coincidem.");return;}
   form.dataset.busy="1";const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A criar conta...";}
   const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone}}});
   form.dataset.busy="0";if(button){button.disabled=false;button.textContent="Criar conta";}
   if(error){const msg=(error.message||"").toLowerCase();if(msg.includes("rate limit")||msg.includes("email rate limit"))alert("O Supabase atingiu temporariamente o limite de emails. Não repitas a tentativa agora; aguarda o limite ser renovado e tenta novamente uma vez.");else alert(error.message);return;}
-  if(data.session){const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();alert("Conta criada com sucesso!");}
+  if(data.session){
+    currentClientUser=data.user;
+    await claimPendingAdminInvite();
+    const now=new Date().toISOString();
+    await window.driveSupabase.from("profiles").upsert({id:data.user.id,name,phone,email,privacy_accepted_at:now,terms_accepted_at:now},{onConflict:"id"});
+    currentClientUser=data.user;
+  await claimPendingAdminInvite();
+  const accepted=await requireLegalConsent(data.user);
+  if(!accepted)return;
+  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();alert(currentClientIsAdmin?"Conta criada com sucesso! O teu acesso de Administração foi ativado.":"Conta criada com sucesso!");
+  }
   else{showClientLogin();alert("Conta criada! Verifica o teu email para confirmar a conta e depois entra no Drive Cars.");}
 }
 async function clientLogin(e){
@@ -181,6 +227,8 @@ async function clientLogin(e){
 }
 
 async function loginWithGoogle(){
+  if(!document.getElementById("googleLegalConsent")?.checked){alert("Aceita primeiro a Política de Privacidade e os Termos de Uso.");return;}
+  localStorage.setItem("driveLegalConsentIntent","1");
   if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
   const {error}=await window.driveSupabase.auth.signInWithOAuth({
     provider:"google",
@@ -217,15 +265,20 @@ async function updateRecoveredPassword(e){
 async function initClientModal(){
   const login=document.getElementById("clientLoginForm"),signup=document.getElementById("clientSignupForm"),forgot=document.getElementById("forgotPasswordForm"),reset=document.getElementById("resetPasswordForm");
   if(login)login.onsubmit=clientLogin;if(signup)signup.onsubmit=clientSignup;if(forgot)forgot.onsubmit=sendPasswordReset;if(reset)reset.onsubmit=updateRecoveredPassword;
+  const googleConsent=document.getElementById("googleLegalConsent");
+  const googleBtn=document.getElementById("googleLoginBtn");
+  if(googleConsent&&googleBtn)googleConsent.addEventListener("change",()=>googleBtn.disabled=!googleConsent.checked);
+  const adminInvite=new URLSearchParams(location.search).get("adminInvite");
+  if(adminInvite){localStorage.setItem("drivePendingAdminInvite",adminInvite);openClientModal();showClientSignup();}
   if(!window.driveSupabase){updateClientHeader(null);return;}
   const {data:{session}}=await window.driveSupabase.auth.getSession();
   const recovery=new URLSearchParams(location.search).get("reset")==="1" || window.location.hash.includes("type=recovery");
   if(recovery && session){showClientReset();}
-  else if(session){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);showClientAccount(profile);}
+  else if(session){currentClientUser=session.user;await claimPendingAdminInvite();const accepted=await requireLegalConsent(session.user);if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);showClientAccount(profile);}}
   else{updateClientHeader(null);await refreshAdminState(null);}
   window.driveSupabase.auth.onAuthStateChange(async (event,session)=>{
     if(event==="PASSWORD_RECOVERY"){showClientReset();return;}
-    if(session){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);if(!recovery)showClientAccount(profile);}
+    if(session){currentClientUser=session.user;await claimPendingAdminInvite();const accepted=await requireLegalConsent(session.user);if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);if(!recovery)showClientAccount(profile);}}
     else{currentClientUser=null;currentClientProfile=null;currentClientIsAdmin=false;updateClientHeader(null);await refreshAdminState(null);showClientLogin();}
   });
 }
