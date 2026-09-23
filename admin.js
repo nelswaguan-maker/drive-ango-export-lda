@@ -1,7 +1,8 @@
 /* ===== ADMIN SECURITY + WHATSAPP INVITES ===== */
 let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
-let cars=[];\nlet editingImages=[];
+let cars=[];
+let editingImages=[];
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
 const $=id=>document.getElementById(id);
