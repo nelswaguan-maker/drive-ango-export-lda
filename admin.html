@@ -3,13 +3,13 @@
   <div class="auth-box">
     <h1>DRIVE</h1><p>Painel de Administração</p>
     <div id="setupBox" class="hidden"><h2>Acesso de administração</h2><p>O acesso de administrador é reservado a contas autorizadas.</p></div>
-    <div id="loginBox" class="hidden"><h2>Entrar</h2><input id="adminEmail" type="email" placeholder="Email"><input id="adminPass" type="password" placeholder="Senha"><button onclick="loginAdmin()">Entrar no painel</button><p id="loginMsg"></p></div>
+    <div id="loginBox" class="hidden"><h2>Entrar</h2><input id="adminEmail" type="email" placeholder="Email"><div class="password-field"><input id="adminPass" type="password" placeholder="Senha"><button type="button" class="show-pass" data-target="adminPass" aria-label="Mostrar senha">👁</button></div><button onclick="loginAdmin()">Entrar no painel</button><p id="loginMsg"></p></div>
     <div id="inviteAccess" class="invite-access hidden">
       <h3>Convite para administrador</h3><p id="inviteInfo">Este convite foi enviado pelo WhatsApp.</p>
       <input id="acceptName" placeholder="Teu nome">
       <input id="acceptEmail" type="email" placeholder="O teu email">
-      <input id="acceptPass" type="password" placeholder="Criar senha (mín. 8 caracteres)">
-      <input id="acceptPassConfirm" type="password" placeholder="Confirmar senha">
+      <div class="password-field"><input id="acceptPass" type="password" placeholder="Criar senha (mín. 8 caracteres)"><button type="button" class="show-pass" data-target="acceptPass" aria-label="Mostrar senha">👁</button></div>
+      <div class="password-field"><input id="acceptPassConfirm" type="password" placeholder="Confirmar senha"><button type="button" class="show-pass" data-target="acceptPassConfirm" aria-label="Mostrar senha">👁</button></div>
       <button onclick="acceptInvite()">Aceitar convite e criar conta</button>
       <p id="inviteMsg"></p>
     </div>
@@ -18,7 +18,12 @@
 
 <div id="panel" class="hidden"><header class="admin-header"><div><strong>DRIVE</strong><span id="roleBadge"></span></div><div><span id="welcome"></span><button class="dark" onclick="logoutAdmin()">Sair</button></div></header><main class="admin-main">
 <section class="dashboard"><h1>Painel de Administração</h1><p id="permissionNote"></p></section>
-<section id="carSection" class="panel-card"><h2>Publicar / editar carro</h2><form id="carForm"><input id="editId" type="hidden"><input id="brand" required placeholder="Marca"><input id="model" required placeholder="Modelo"><select id="body"><option>SUV</option><option>Sedan</option><option>Hatchback</option><option>Pick up</option><option>Coupe</option><option>Station Wagon</option></select><input id="price" type="number" min="0" required placeholder="Preço USD"><input id="year" type="number" min="1900" max="2100" required placeholder="Ano"><input id="km" type="number" min="0" required placeholder="Quilometragem"><input id="discount" type="number" min="0" max="100" placeholder="Desconto %"><input id="engine" placeholder="Motor, ex.: 2,000cc"><input id="trans" placeholder="Transmissão, ex.: AT"><input id="drive" placeholder="Tração, ex.: 4WD"><input id="wheel" placeholder="Volante, ex.: RHD"><div class="photo-fields"><label>Fotos do veículo — máximo 10</label><input id="image1" type="url" required placeholder="URL da foto 1 (principal)"><input id="image2" type="url"  placeholder="URL da foto 2"><input id="image3" type="url"  placeholder="URL da foto 3"><input id="image4" type="url"  placeholder="URL da foto 4"><input id="image5" type="url"  placeholder="URL da foto 5"><input id="image6" type="url"  placeholder="URL da foto 6"><input id="image7" type="url"  placeholder="URL da foto 7"><input id="image8" type="url"  placeholder="URL da foto 8"><input id="image9" type="url"  placeholder="URL da foto 9"><input id="image10" type="url"  placeholder="URL da foto 10"></div><div class="form-actions"><button type="submit" id="saveCarBtn">Publicar carro</button><button type="button" class="secondary" onclick="resetCarForm()">Limpar</button></div></form></section>
+<section id="carSection" class="panel-card"><h2>Publicar / editar carro</h2><form id="carForm"><input id="editId" type="hidden"><input id="brand" required placeholder="Marca"><input id="model" required placeholder="Modelo"><select id="body"><option>SUV</option><option>Sedan</option><option>Hatchback</option><option>Pick up</option><option>Coupe</option><option>Station Wagon</option></select><input id="price" type="number" min="0" required placeholder="Preço USD"><input id="year" type="number" min="1900" max="2100" required placeholder="Ano"><input id="km" type="number" min="0" required placeholder="Quilometragem"><input id="discount" type="number" min="0" max="100" placeholder="Desconto %"><input id="engine" placeholder="Motor, ex.: 2,000cc"><input id="trans" placeholder="Transmissão, ex.: AT"><input id="drive" placeholder="Tração, ex.: 4WD"><input id="wheel" placeholder="Volante, ex.: RHD"><div class="photo-fields">
+<label>Fotos do veículo — máximo 10</label>
+<input id="carPhotos" type="file" accept="image/*" multiple>
+<small id="photoHelp">Escolhe até 10 fotos diretamente da galeria do telefone. A primeira será a capa.</small>
+<div id="photoPreview" class="photo-preview"></div>
+</div><div class="form-actions"><button type="submit" id="saveCarBtn">Publicar carro</button><button type="button" class="secondary" onclick="resetCarForm()">Limpar</button></div></form></section>
 <section class="panel-card"><div class="section-head"><h2>Carros publicados</h2><button class="secondary" onclick="draw()">Atualizar</button></div><div id="list"></div></section>
 
 <section id="staffSection" class="panel-card"><h2>Administradores</h2><p>Tu és o Proprietário Principal. Só tu podes convidar, bloquear ou remover administradores.</p>

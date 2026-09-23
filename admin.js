@@ -1,7 +1,7 @@
 /* ===== ADMIN SECURITY + WHATSAPP INVITES ===== */
 let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
-let cars=[];
+let cars=[];\nlet editingImages=[];
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
 const $=id=>document.getElementById(id);
@@ -92,18 +92,78 @@ function draw(){
   }).join("")||"<p>Nenhum carro publicado.</p>";
 }
 
+
+async function uploadCarPhotos(files, carId){
+  if(!sb()) throw new Error("Supabase não configurado.");
+  if(!files.length) return [];
+  if(files.length>10) throw new Error("Podes escolher no máximo 10 fotos.");
+  const bucket="car-images";
+  const uploaded=[];
+  for(let i=0;i<files.length;i++){
+    const file=files[i];
+    if(!file.type.startsWith("image/")) throw new Error("Todos os ficheiros devem ser imagens.");
+    if(file.size>8*1024*1024) throw new Error("Cada foto deve ter no máximo 8 MB.");
+    const ext=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+    const path=`${currentAdminUser.id}/${carId}/${Date.now()}-${i}.${ext}`;
+    const {error}=await sb().storage.from(bucket).upload(path,file,{upsert:false,contentType:file.type});
+    if(error) throw new Error("Erro ao enviar a foto: "+error.message);
+    const {data}=sb().storage.from(bucket).getPublicUrl(path);
+    uploaded.push(data.publicUrl);
+  }
+  return uploaded;
+}
+
+function renderPhotoPreview(files){
+  const box=$("photoPreview");
+  if(!box)return;
+  const list=Array.from(files||[]).slice(0,10);
+  box.innerHTML=list.map((f,i)=>`<div class="photo-thumb"><img src="${URL.createObjectURL(f)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
+}
+
+$("carPhotos")?.addEventListener("change",e=>{
+  const files=Array.from(e.target.files||[]);
+  if(files.length>10){
+    alert("Podes escolher no máximo 10 fotos.");
+    e.target.value="";
+    renderPhotoPreview([]);
+    return;
+  }
+  renderPhotoPreview(files);
+});
+
 $("carForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!has("publish")&&!$("editId").value)return;
   readCars();const id=$("editId").value;
-  const images=Array.from({length:10},(_,i)=>$("image"+(i+1))?.value.trim()).filter(Boolean);
-  const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
-  if(id){const old=getCar(id);if(!has("edit")){alert("Sem permissão para editar.");return;}Object.assign(old,base);}
-  else cars.unshift({id:"DRV"+Date.now(),...base,status:"available",createdAt:Date.now()});
-  saveCars();resetCarForm();draw();alert(id?"Carro atualizado.":"Carro publicado.");
+  const baseId=id||("DRV"+Date.now());
+  const files=Array.from($("carPhotos")?.files||[]);
+  if(files.length>10){alert("Podes escolher no máximo 10 fotos.");return;}
+  try{
+    let images=editingImages.slice();
+    if(files.length) images=await uploadCarPhotos(files,baseId);
+    if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
+    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
+    if(id){
+      const old=getCar(id);
+      if(!has("edit")){alert("Sem permissão para editar.");return;}
+      Object.assign(old,base);
+    }else{
+      cars.unshift({id:baseId,...base,status:"available",createdAt:Date.now()});
+    }
+    saveCars();resetCarForm();draw();alert(id?"Carro atualizado.":"Carro publicado.");
+  }catch(err){
+    alert(err.message||"Não foi possível enviar as fotos.");
+  }
 });
-function editCar(id){if(!has("edit"))return;const c=getCar(id);if(!c)return;for(const k of ["brand","model","body","price","year","km","discount","engine","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
-  const imgs=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);for(let i=1;i<=10;i++)if($("image"+i))$("image"+i).value=imgs[i-1]||"";$("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});}
-function resetCarForm(){$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
+function editCar(id){
+  if(!has("edit"))return;
+  const c=getCar(id);if(!c)return;
+  for(const k of ["brand","model","body","price","year","km","discount","engine","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
+  if($("carPhotos"))$("carPhotos").value="";
+  if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
+  $("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});
+}
+function resetCarForm(){editingImages=[];if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
 function reserveCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="reserved";c.reservedAt=Date.now();c.reservedUntil=Date.now()+48*60*60*1000;saveCars();draw();}
 function sellCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="sold";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
 function reopenCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="available";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
@@ -176,7 +236,7 @@ async function acceptInvite(){
   if(name.length<2||pass.length<8||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais (mínimo 8 caracteres).";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name}}});
+  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:"https://drive-ango-export-lda.vercel.app/admin.html"}});
   if(error){
     if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
     msg.textContent=error.message;return;
@@ -184,7 +244,7 @@ async function acceptInvite(){
   localStorage.setItem("drivePendingAdminInvite",token);
   if(data.session){
     const result=await claimInvite(token);
-    if(result){location.replace("admin.html");return;}
+    if(result){history.replaceState({},document.title,"admin.html");location.replace("admin.html");return;}
   }
   if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
   msg.textContent="Conta criada. Se o Supabase pedir confirmação por email, confirma primeiro e depois entra novamente nesta página para concluir o convite.";
@@ -215,14 +275,47 @@ $("contactForm")?.addEventListener("submit",e=>{e.preventDefault();if(!isOwner()
 
 document.addEventListener("DOMContentLoaded",async()=>{
   const params=new URLSearchParams(location.search);
+
+  // Se o convite já foi usado/criado, nunca voltar a mostrar o formulário.
+  // Primeiro tentamos concluir um convite pendente com a sessão atual.
+  if(sb()){
+    const {data:{session}}=await sb().auth.getSession();
+    if(session){
+      currentAdminUser=session.user;
+      const pending=localStorage.getItem("drivePendingAdminInvite");
+      if(pending){
+        const ok=await claimInvite(pending);
+        if(ok){
+          history.replaceState({},document.title,"admin.html");
+          await init();
+          return;
+        }
+      }
+    }
+  }
+
+  // Só mostrar o formulário se ainda não houver uma sessão/admin pendente.
   if(params.get("invite")){
     $("loginScreen")?.classList.remove("hidden");
     $("setupBox")?.classList.add("hidden");$("loginBox")?.classList.add("hidden");$("inviteAccess")?.classList.remove("hidden");
     $("inviteInfo").textContent="Este convite foi enviado pelo WhatsApp. Cria a tua conta para receber o acesso de administrador.";
     return;
   }
+
   currentAdminUser=await window.requireAdmin();
   if(currentAdminUser) await init();
   await tryPendingInvite();
   setInterval(()=>{if(currentAdminUser){draw();drawAdmins();}},5000);
+});
+
+// Mostrar/ocultar senhas
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(".show-pass");
+  if (!button) return;
+  const input = document.getElementById(button.dataset.target);
+  if (!input) return;
+  const showing = input.type === "password";
+  input.type = showing ? "text" : "password";
+  button.textContent = showing ? "🙈" : "👁";
+  button.setAttribute("aria-label", showing ? "Ocultar senha" : "Mostrar senha");
 });

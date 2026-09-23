@@ -302,3 +302,15 @@ async function updateAdminVisibility(){
 }
 
 document.addEventListener('DOMContentLoaded', updateAdminVisibility);
+
+// Mostrar/ocultar senhas
+document.addEventListener("click", (event) => {
+  const button = event.target.closest(".show-pass");
+  if (!button) return;
+  const input = document.getElementById(button.dataset.target);
+  if (!input) return;
+  const showing = input.type === "password";
+  input.type = showing ? "text" : "password";
+  button.textContent = showing ? "🙈" : "👁";
+  button.setAttribute("aria-label", showing ? "Ocultar senha" : "Mostrar senha");
+});
