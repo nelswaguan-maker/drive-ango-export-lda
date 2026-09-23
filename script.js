@@ -18,7 +18,7 @@ const seedCars=[
 let filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
 const brands=["Toyota","Honda","Nissan","Mazda","Suzuki","Mitsubishi","Daihatsu","Subaru","Hino","Volkswagen"];
 const brandImgs=["https://cdn.simpleicons.org/toyota","https://cdn.simpleicons.org/honda","https://cdn.simpleicons.org/nissan","https://cdn.simpleicons.org/mazda","https://cdn.simpleicons.org/suzuki","https://cdn.simpleicons.org/mitsubishi","https://cdn.simpleicons.org/daihatsu","https://cdn.simpleicons.org/subaru","https://cdn.simpleicons.org/hino","https://cdn.simpleicons.org/volkswagen"];
-const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up"];
+const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck"];
 
 function loadCars(){
   let stored=JSON.parse(localStorage.getItem(KEY)||"null");
@@ -30,6 +30,26 @@ function loadCars(){
 }
 function saveCars(list){localStorage.setItem(KEY,JSON.stringify(list));}
 let cars=loadCars();
+
+async function loadPublicCars(){
+  if(window.driveCarsData && window.driveSupabase){
+    try{
+      const {data,error}=await window.driveCarsData.fetchCars();
+      if(!error && data.length){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
+      if(error) console.warn("Catálogo online:",error.message);
+    }catch(e){console.warn("Catálogo online:",e);}
+  }
+  cars=loadCars();
+}
+function subscribePublicCars(){
+  if(!window.driveCarsData || window.publicCarsRealtime) return;
+  window.publicCarsRealtime=window.driveCarsData.subscribe(async()=>{
+    const {data,error}=await window.driveCarsData.fetchCars();
+    if(error)return;
+    cars=data;localStorage.setItem(KEY,JSON.stringify(cars));
+    renderBrands();renderBodies();renderPopular();renderRecent();renderResults(filtered());updateFavCount();
+  });
+}
 
 function esc(v){return String(v??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));}
 function statusHTML(c){
@@ -44,7 +64,7 @@ function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n
 function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="brand-card" onclick="setBrand('${b}')"><img src="${brandImgs[i]}" onerror="this.style.display='none'"><div>${b}<br><small>(${(72188-i*4300).toLocaleString("en-US")})</small></div></button>`).join("");}
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
 function renderPopular(){const popular=[["Toyota","LAND CRUISER",1471,cars[4]?.image], ["Subaru","FORESTER",1435,cars[7]?.image], ["Toyota","HIACE VAN",3437,cars[4]?.image], ["Toyota","NOAH",2059,cars[0]?.image], ["Toyota","COROLLA AXIO",362,cars[3]?.image]];popularModels.innerHTML=popular.map(x=>`<div class="popular-card"><img src="${x[3]||cars[0].image}"><div><small>${x[0]}</small><strong>${x[1]} <small>(${x[2].toLocaleString()})</small></strong></div></div>`).join("");}
-function renderRecent(){const c=cars[8]||cars[0];recentCars.innerHTML=`<div class="recent-card"><img src="${c.image}"><div class="recent-info"><h3>2025/12 ${esc(c.brand.toUpperCase())} ${esc(c.model.toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
+function renderRecent(){const c=cars[8]||cars[0];recentCars.innerHTML=`<div class="recent-card"><img src="${c.image}"><div class="recent-info"><h3>2025/12 ${esc(c.brand.toUpperCase())} ${esc(c.model.toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
 function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
 function renderResults(list){
   resultsGrid.innerHTML=list.length?list.map(c=>{
@@ -55,7 +75,7 @@ function renderResults(list){
       <div class="card-status">${statusHTML(c)}</div>
       <button class="heart" onclick="toggleFav('${esc(c.id)}',this)"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button>
       <a href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"></a>
-      <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">USD ${Number(c.price).toLocaleString()}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.trans||'—')} · ${esc(c.drive||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
+      <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">USD ${Number(c.price).toLocaleString()}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
       <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   updateCountdowns();
@@ -202,7 +222,9 @@ async function clientSignup(e){
   if(!document.getElementById("signupLegalConsent")?.checked){alert("É necessário aceitar a Política de Privacidade e os Termos de Uso.");return;}
   if(name.length<2){alert("Introduza o seu nome completo.");return;}if(phone.length<7){alert("Introduza um número de telefone válido.");return;}if(pass.length<8){alert("A senha deve ter pelo menos 8 caracteres.");return;}if(pass!==confirm){alert("As senhas não coincidem.");return;}
   form.dataset.busy="1";const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone}}});
+  const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
+  const emailRedirectTo=window.location.origin+"/index.html"+(pendingInvite?"?adminInvite="+encodeURIComponent(pendingInvite)+"&openLogin=1":"?openLogin=1");
+  const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone},emailRedirectTo}});
   form.dataset.busy="0";if(button){button.disabled=false;button.textContent="Criar conta";}
   if(error){const msg=(error.message||"").toLowerCase();if(msg.includes("rate limit")||msg.includes("email rate limit"))alert("O Supabase atingiu temporariamente o limite de emails. Não repitas a tentativa agora; aguarda o limite ser renovado e tenta novamente uma vez.");else alert(error.message);return;}
   if(data.session){
@@ -214,9 +236,14 @@ async function clientSignup(e){
   await claimPendingAdminInvite();
   const accepted=await requireLegalConsent(data.user);
   if(!accepted)return;
-  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();alert(currentClientIsAdmin?"Conta criada com sucesso! O teu acesso de Administração foi ativado.":"Conta criada com sucesso!");
+  const acceptedInvite=await claimPendingAdminInvite();
+  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();
+  if(acceptedInvite) alert("Convite de administrador ativado. Agora podes abrir Administração.");alert(currentClientIsAdmin?"Conta criada com sucesso! O teu acesso de Administração foi ativado.":"Conta criada com sucesso!");
   }
-  else{showClientLogin();alert("Conta criada! Verifica o teu email para confirmar a conta e depois entra no Drive Cars.");}
+  else{
+    showClientLogin();
+    alert(pendingInvite?"Conta criada! Confirma o email. Depois volta ao Drive e entra com a mesma conta; o convite de administrador será ativado automaticamente.":"Conta criada! Verifica o teu email para confirmar a conta e depois entra no Drive Cars.");
+  }
 }
 async function clientLogin(e){
   e.preventDefault();if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
@@ -230,9 +257,11 @@ async function loginWithGoogle(){
   if(!document.getElementById("googleLegalConsent")?.checked){alert("Aceita primeiro a Política de Privacidade e os Termos de Uso.");return;}
   localStorage.setItem("driveLegalConsentIntent","1");
   if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
+  const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
+  const redirectTo=window.location.origin+"/index.html"+(pendingInvite?"?adminInvite="+encodeURIComponent(pendingInvite)+"&openLogin=1":"?openLogin=1");
   const {error}=await window.driveSupabase.auth.signInWithOAuth({
     provider:"google",
-    options:{redirectTo:window.location.origin+"/index.html?openLogin=1"}
+    options:{redirectTo}
   });
   if(error)alert("Não foi possível entrar com Google: "+error.message);
 }
@@ -285,7 +314,9 @@ async function initClientModal(){
 
 
 document.addEventListener("DOMContentLoaded",async()=>{
-  cars=loadCars();renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
+  await loadPublicCars();
+  subscribePublicCars();
+  renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();
   if(params.get("openSignup")==="1"){openClientModal();showClientSignup();}

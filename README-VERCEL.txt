@@ -29,3 +29,10 @@ O item “Administração” do menu público só aparece quando a sessão auten
 
 
 ATUALIZAÇÃO: administração para convidados aparece no menu após login; convites levam ao cadastro na página inicial; cadastro exige aceitação de Política de Privacidade e Termos; veículos suportam até 10 URLs de fotos.
+
+CATÁLOGO PARTILHADO / TEMPO REAL
+- O catálogo de veículos agora usa a tabela public.drive_cars no Supabase.
+- Execute drive-cars-realtime.sql uma vez no SQL Editor do Supabase.
+- Depois disso, publicações, edições, reservas, vendidos e reaberturas feitas por qualquer administrador são sincronizadas entre os administradores e a página inicial.
+- A edição do veículo inclui Motor e Peso e a carroceria inclui Truck.
+- A página Detalhes possui setas ◀ ▶ para navegar pelas fotos.

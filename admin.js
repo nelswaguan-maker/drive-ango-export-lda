@@ -8,8 +8,35 @@ const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
 function sb(){return window.driveSupabase;}
-function readCars(){cars=JSON.parse(localStorage.getItem(KEY)||"[]");}
-function saveCars(){localStorage.setItem(KEY,JSON.stringify(cars));}
+function readCars(){cars=JSON.parse(localStorage.getItem(KEY)||"[]"); return cars;}
+function saveCars(list=cars){
+  localStorage.setItem(KEY,JSON.stringify(list));
+  if(window.driveCarsData && currentAdminUser){
+    window.driveCarsData.upsertCars(list,currentAdminUser.id).catch(err=>console.warn("Sincronização dos carros:",err));
+  }
+} 
+async function loadCarsFromBackend(){
+  if(!window.driveCarsData || !sb()) { readCars(); return; }
+  const {data,error}=await window.driveCarsData.fetchCars();
+  if(error){console.warn("Catálogo online:",error.message);readCars();return;}
+  if(data.length){
+    cars=data; localStorage.setItem(KEY,JSON.stringify(cars)); return;
+  }
+  readCars();
+  // Na primeira instalação, o proprietário pode migrar os carros que já estavam no navegador.
+  if(isOwner() && cars.length){
+    const r=await window.driveCarsData.upsertCars(cars,currentAdminUser.id);
+    if(!r.error) { const fresh=await window.driveCarsData.fetchCars(); if(!fresh.error&&fresh.data.length){cars=fresh.data;localStorage.setItem(KEY,JSON.stringify(cars));} }
+  }
+}
+function subscribeCarsRealtime(){
+  if(!window.driveCarsData || window.driveCarsRealtime) return;
+  window.driveCarsRealtime=window.driveCarsData.subscribe(async payload=>{
+    const {data,error}=await window.driveCarsData.fetchCars();
+    if(error){console.warn("Atualização em tempo real:",error.message);return;}
+    cars=data; localStorage.setItem(KEY,JSON.stringify(cars)); draw();
+  });
+}
 
 function isOwner(){
   return (currentAdminUser?.email||"").toLowerCase()==="nelswaguan@gmail.com";
@@ -32,6 +59,8 @@ function guard(){
 async function init(){
   if(!guard()) return;
   await loadPermissions();
+  await loadCarsFromBackend();
+  subscribeCarsRealtime();
   renderUser(); draw(); await drawAdmins(); await drawInvites();
   if($("contactPhone")) $("contactPhone").value=localStorage.getItem(CONTACT_KEY)||"";
   applyPermissions();
@@ -142,7 +171,7 @@ $("carForm")?.addEventListener("submit",async e=>{
     let images=editingImages.slice();
     if(files.length) images=await uploadCarPhotos(files,baseId);
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
-    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
+    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
     if(id){
       const old=getCar(id);
       if(!has("edit")){alert("Sem permissão para editar.");return;}
@@ -158,7 +187,7 @@ $("carForm")?.addEventListener("submit",async e=>{
 function editCar(id){
   if(!has("edit"))return;
   const c=getCar(id);if(!c)return;
-  for(const k of ["brand","model","body","price","year","km","discount","engine","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  for(const k of ["brand","model","body","price","year","km","discount","engine","weight","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
   editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
   if($("carPhotos"))$("carPhotos").value="";
   if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
@@ -168,7 +197,16 @@ function resetCarForm(){editingImages=[];if($("carPhotos"))$("carPhotos").value=
 function reserveCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="reserved";c.reservedAt=Date.now();c.reservedUntil=Date.now()+48*60*60*1000;saveCars();draw();}
 function sellCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="sold";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
 function reopenCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="available";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
-function removeCar(id){if(!has("delete"))return;if(!confirm("Eliminar este anúncio?"))return;readCars();cars=cars.filter(c=>c.id!==id);saveCars();draw();}
+async function removeCar(id){
+  if(!has("delete"))return;
+  if(!confirm("Eliminar este anúncio?"))return;
+  readCars();
+  if(window.driveCarsData){
+    const {error}=await window.driveCarsData.deleteCar(id);
+    if(error){alert("Não foi possível eliminar: "+error.message);return;}
+  }
+  cars=cars.filter(c=>c.id!==id);saveCars(cars);draw();
+}
 
 /* ===== CONVITE PELO WHATSAPP ===== */
 function normalizeWhatsApp(phone){return String(phone||"").replace(/[^0-9]/g,"");}
@@ -237,7 +275,7 @@ async function acceptInvite(){
   if(name.length<2||pass.length<8||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais (mínimo 8 caracteres).";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:"https://drive-ango-export-lda.vercel.app/admin.html"}});
+  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:"https://drive-ango-export-lda.vercel.app/index.html"}});
   if(error){
     if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
     msg.textContent=error.message;return;
