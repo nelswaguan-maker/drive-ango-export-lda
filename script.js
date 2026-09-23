@@ -34,8 +34,8 @@ let cars=loadCars();
 async function loadPublicCars(){
   if(window.driveCarsData && window.driveSupabase){
     try{
-      const {data,error}=await window.driveCarsData.fetchCars();
-      if(!error && data.length){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
+      const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
+      if(!error){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
       if(error) console.warn("Catálogo online:",error.message);
     }catch(e){console.warn("Catálogo online:",e);}
   }
@@ -44,7 +44,7 @@ async function loadPublicCars(){
 function subscribePublicCars(){
   if(!window.driveCarsData || window.publicCarsRealtime) return;
   window.publicCarsRealtime=window.driveCarsData.subscribe(async()=>{
-    const {data,error}=await window.driveCarsData.fetchCars();
+    const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
     if(error)return;
     cars=data;localStorage.setItem(KEY,JSON.stringify(cars));
     renderBrands();renderBodies();renderPopular();renderRecent();renderResults(filtered());updateFavCount();

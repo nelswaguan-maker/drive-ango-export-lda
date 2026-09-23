@@ -371,6 +371,7 @@ create table if not exists public.drive_cars (
   images text[] not null default '{}',
   image text not null default '',
   status text not null default 'available' check (status in ('available','reserved','sold')),
+  published boolean not null default true,
   reserved_at timestamptz,
   reserved_until timestamptz,
   created_by uuid references auth.users(id) on delete set null,
@@ -379,6 +380,8 @@ create table if not exists public.drive_cars (
 );
 
 alter table public.drive_cars add column if not exists weight text not null default '';
+alter table public.drive_cars add column if not exists published boolean not null default true;
+alter table public.drive_cars replica identity full;
 alter table public.drive_cars enable row level security;
 
 create or replace function public.drive_cars_set_updated_at()

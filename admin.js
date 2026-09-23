@@ -10,31 +10,38 @@ const esc=v=>String(v??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 function sb(){return window.driveSupabase;}
 function readCars(){cars=JSON.parse(localStorage.getItem(KEY)||"[]"); return cars;}
 function saveCars(list=cars){
-  localStorage.setItem(KEY,JSON.stringify(list));
-  if(window.driveCarsData && currentAdminUser){
-    window.driveCarsData.upsertCars(list,currentAdminUser.id).catch(err=>console.warn("Sincronização dos carros:",err));
-  }
-} 
+  cars=Array.isArray(list)?list:cars;
+  localStorage.setItem(KEY,JSON.stringify(cars));
+}
+async function syncCarsFromBackend(){
+  if(!window.driveCarsData || !sb()) return false;
+  const {data,error}=await window.driveCarsData.fetchCars();
+  if(error){console.warn("Catálogo online:",error.message);return false;}
+  cars=data;
+  localStorage.setItem(KEY,JSON.stringify(cars));
+  return true;
+}
 async function loadCarsFromBackend(){
-  if(!window.driveCarsData || !sb()) { readCars(); return; }
+  if(!window.driveCarsData || !sb()){ readCars(); return; }
   const {data,error}=await window.driveCarsData.fetchCars();
   if(error){console.warn("Catálogo online:",error.message);readCars();return;}
-  if(data.length){
-    cars=data; localStorage.setItem(KEY,JSON.stringify(cars)); return;
-  }
+  if(data.length){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
   readCars();
-  // Na primeira instalação, o proprietário pode migrar os carros que já estavam no navegador.
   if(isOwner() && cars.length){
     const r=await window.driveCarsData.upsertCars(cars,currentAdminUser.id);
-    if(!r.error) { const fresh=await window.driveCarsData.fetchCars(); if(!fresh.error&&fresh.data.length){cars=fresh.data;localStorage.setItem(KEY,JSON.stringify(cars));} }
+    if(!r.error){
+      const fresh=await window.driveCarsData.fetchCars();
+      if(!fresh.error){cars=fresh.data;localStorage.setItem(KEY,JSON.stringify(cars));}
+    }
+  } else {
+    cars=[];localStorage.setItem(KEY,JSON.stringify(cars));
   }
 }
 function subscribeCarsRealtime(){
   if(!window.driveCarsData || window.driveCarsRealtime) return;
-  window.driveCarsRealtime=window.driveCarsData.subscribe(async payload=>{
-    const {data,error}=await window.driveCarsData.fetchCars();
-    if(error){console.warn("Atualização em tempo real:",error.message);return;}
-    cars=data; localStorage.setItem(KEY,JSON.stringify(cars)); draw();
+  window.driveCarsRealtime=window.driveCarsData.subscribe(async ()=>{
+    const ok=await syncCarsFromBackend();
+    if(ok) draw();
   });
 }
 
@@ -107,13 +114,15 @@ function formatCountdown(until){if(!until)return "48:00:00";const d=Math.max(0,N
 function getCar(id){return cars.find(c=>c.id===id)}
 
 function draw(){
-  readCars();if(!currentAdminUser)return;
+  if(!currentAdminUser)return;
   const now=Date.now();let changed=false;
   cars=cars.map(c=>{if(c.status==="reserved"&&c.reservedUntil&&now>=c.reservedUntil){changed=true;return {...c,status:"available",reservedAt:null,reservedUntil:null};}return {...c,status:c.status||"available"};});
   if(changed)saveCars();
   $("list").innerHTML=cars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
-    return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · USD ${Number(c.price).toLocaleString()} · ${status}</small></div><div class="item-actions">
+    const pub=c.published!==false;
+    return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · USD ${Number(c.price).toLocaleString()} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
+    ${has("publish")?`<button class="secondary" onclick="togglePublished('${esc(c.id)}')">${pub?"Ocultar do site":"Publicar no site"}</button>`:""}
     ${has("edit")?`<button class="secondary" onclick="editCar('${esc(c.id)}')">Editar</button>`:""}
     ${has("manageStatus")&&c.status==="available"?`<button onclick="reserveCar('${esc(c.id)}')">Reservar 48h</button><button onclick="sellCar('${esc(c.id)}')">Vendido</button>`:""}
     ${has("manageStatus")&&c.status==="reserved"?`<button onclick="sellCar('${esc(c.id)}')">Vendido</button><button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir</button>`:""}
@@ -163,7 +172,7 @@ $("carPhotos")?.addEventListener("change",e=>{
 
 $("carForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!has("publish")&&!$("editId").value)return;
-  readCars();const id=$("editId").value;
+  const id=$("editId").value;
   const baseId=id||("DRV"+Date.now());
   const files=Array.from($("carPhotos")?.files||[]);
   if(files.length>10){alert("Podes escolher no máximo 10 fotos.");return;}
@@ -171,15 +180,20 @@ $("carForm")?.addEventListener("submit",async e=>{
     let images=editingImages.slice();
     if(files.length) images=await uploadCarPhotos(files,baseId);
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
-    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||""};
+    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||"",published:$("published").checked};
+    let target;
     if(id){
-      const old=getCar(id);
+      target=getCar(id);
       if(!has("edit")){alert("Sem permissão para editar.");return;}
-      Object.assign(old,base);
+      if(!target){alert("Carro não encontrado.");return;}
+      Object.assign(target,base);
     }else{
-      cars.unshift({id:baseId,...base,status:"available",createdAt:Date.now()});
+      target={id:baseId,...base,status:"available",createdAt:Date.now()};
     }
-    saveCars();resetCarForm();draw();alert(id?"Carro atualizado.":"Carro publicado.");
+    const result=await window.driveCarsData.upsertCar(target,currentAdminUser.id);
+    if(result.error) throw new Error("Não foi possível sincronizar o anúncio: "+result.error.message);
+    await syncCarsFromBackend();
+    resetCarForm();draw();alert(id?"Carro atualizado e sincronizado.":"Carro publicado e sincronizado com todos os dispositivos.");
   }catch(err){
     alert(err.message||"Não foi possível enviar as fotos.");
   }
@@ -188,24 +202,45 @@ function editCar(id){
   if(!has("edit"))return;
   const c=getCar(id);if(!c)return;
   for(const k of ["brand","model","body","price","year","km","discount","engine","weight","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  if($("published"))$("published").checked=c.published!==false;
   editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
   if($("carPhotos"))$("carPhotos").value="";
   if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
   $("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});
 }
 function resetCarForm(){editingImages=[];if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
-function reserveCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="reserved";c.reservedAt=Date.now();c.reservedUntil=Date.now()+48*60*60*1000;saveCars();draw();}
-function sellCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="sold";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
-function reopenCar(id){if(!has("manageStatus"))return;readCars();const c=getCar(id);if(!c)return;c.status="available";c.reservedAt=null;c.reservedUntil=null;saveCars();draw();}
+async function togglePublished(id){
+  if(!has("publish"))return;
+  const c=getCar(id);if(!c)return;
+  c.published=c.published===false;
+  const result=await window.driveCarsData.upsertCar(c,currentAdminUser.id);
+  if(result.error){alert("Não foi possível alterar a publicação: "+result.error.message);return;}
+  await syncCarsFromBackend();draw();
+}
+async function updateCarStatus(id,status){
+  if(!has("manageStatus"))return;
+  const c=getCar(id);if(!c)return;
+  c.status=status;
+  if(status==="reserved"){
+    c.reservedAt=Date.now();c.reservedUntil=Date.now()+48*60*60*1000;
+  }else{
+    c.reservedAt=null;c.reservedUntil=null;
+  }
+  const result=await window.driveCarsData.upsertCar(c,currentAdminUser.id);
+  if(result.error){alert("Não foi possível atualizar o estado: "+result.error.message);return;}
+  await syncCarsFromBackend();draw();
+}
+function reserveCar(id){updateCarStatus(id,"reserved");}
+function sellCar(id){updateCarStatus(id,"sold");}
+function reopenCar(id){updateCarStatus(id,"available");}
 async function removeCar(id){
   if(!has("delete"))return;
   if(!confirm("Eliminar este anúncio?"))return;
-  readCars();
-  if(window.driveCarsData){
-    const {error}=await window.driveCarsData.deleteCar(id);
-    if(error){alert("Não foi possível eliminar: "+error.message);return;}
-  }
-  cars=cars.filter(c=>c.id!==id);saveCars(cars);draw();
+  const {error}=await window.driveCarsData.deleteCar(id);
+  if(error){alert("Não foi possível eliminar: "+error.message);return;}
+  await syncCarsFromBackend();
+  draw();
+  alert("Anúncio eliminado. A alteração foi sincronizada com todos os dispositivos.");
 }
 
 /* ===== CONVITE PELO WHATSAPP ===== */
@@ -368,7 +403,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   currentAdminUser=await window.requireAdmin();
   if(currentAdminUser) await init();
   await tryPendingInvite();
-  setInterval(()=>{if(currentAdminUser){draw();drawAdmins();}},5000);
+  setInterval(async()=>{if(currentAdminUser){await syncCarsFromBackend();draw();drawAdmins();}},5000);
 });
 
 // Mostrar/ocultar senhas

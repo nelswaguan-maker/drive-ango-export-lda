@@ -27,10 +27,10 @@ function render(){
 }
 async function initDetails(){
   if(window.driveCarsData){
-    try{const {data,error}=await window.driveCarsData.fetchCars();if(!error&&data.length){cars=data;car=cars.find(x=>x.id===id)||cars[0]||fallback[0];localStorage.setItem("driveCars",JSON.stringify(cars));}}catch(e){console.warn(e);}
+    try{const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});if(!error){cars=data;car=cars.find(x=>x.id===id)||null;localStorage.setItem("driveCars",JSON.stringify(cars));if(car)render();else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';}}catch(e){console.warn(e);}
   }
   render();
-  if(window.driveCarsData){window.driveCarsData.subscribe(async()=>{const {data,error}=await window.driveCarsData.fetchCars();if(!error&&data.length){cars=data;car=cars.find(x=>x.id===id)||car;localStorage.setItem("driveCars",JSON.stringify(cars));render();}});}
+  if(window.driveCarsData){window.driveCarsData.subscribe(async()=>{const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});if(!error){cars=data;car=cars.find(x=>x.id===id)||null;localStorage.setItem("driveCars",JSON.stringify(cars));if(car)render();else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';}});}
 }
 document.addEventListener("DOMContentLoaded",initDetails);
 setInterval(()=>{if(car.status==="reserved"){const el=document.querySelector(".detail-status");if(el)el.textContent=`RESERVADO — ${countdown(car.reservedUntil)}`;}},1000);
