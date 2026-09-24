@@ -3,15 +3,15 @@ const FAV_KEY="driveFavs";
 const CONTACT_KEY="driveContact";
 
 const seedCars=[
-{id:"DRV001",brand:"Toyota",model:"RAV4",body:"SUV",price:18500,year:2022,km:23500,discount:8,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV002",brand:"BMW",model:"Série 3",body:"Sedan",price:21400,year:2021,km:31200,discount:12,engine:"2,000cc",trans:"AT",drive:"2WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV003",brand:"Mercedes-Benz",model:"GLC",body:"SUV",price:29500,year:2023,km:11000,discount:18,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV004",brand:"Honda",model:"Civic",body:"Sedan",price:12900,year:2020,km:45500,discount:5,engine:"1,500cc",trans:"AT",drive:"2WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV005",brand:"Toyota",model:"Hilux",body:"Pick up",price:24900,year:2022,km:28000,discount:20,engine:"2,800cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV006",brand:"Nissan",model:"X-Trail",body:"SUV",price:15700,year:2021,km:39000,discount:10,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV007",brand:"Volkswagen",model:"Golf",body:"Hatchback",price:10900,year:2019,km:62000,discount:7,engine:"1,400cc",trans:"AT",drive:"2WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV008",brand:"Subaru",model:"Forester",body:"SUV",price:16800,year:2020,km:48000,discount:15,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=900&q=80",status:"available"},
-{id:"DRV009",brand:"Suzuki",model:"Jimny",body:"SUV",price:21210,year:2025,km:2355,discount:4,engine:"1,500cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1537984822441-cff330075342?auto=format&fit=crop&w=900&q=80",status:"available"},
+{id:"DRV001",brand:"Toyota",model:"RAV4",body:"SUV",price:18500,year:2022,km:23500,discount:8,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV002",brand:"BMW",model:"Série 3",body:"Sedan",price:21400,year:2021,km:31200,discount:12,engine:"2,000cc",trans:"AT",drive:"2WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV003",brand:"Mercedes-Benz",model:"GLC",body:"SUV",price:29500,year:2023,km:11000,discount:18,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV004",brand:"Honda",model:"Civic",body:"Sedan",price:12900,year:2020,km:45500,discount:5,engine:"1,500cc",trans:"AT",drive:"2WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV005",brand:"Toyota",model:"Hilux",body:"Pick up",price:24900,year:2022,km:28000,discount:20,engine:"2,800cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1592838064575-70ed626d3a0e?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV006",brand:"Nissan",model:"X-Trail",body:"SUV",price:15700,year:2021,km:39000,discount:10,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV007",brand:"Volkswagen",model:"Golf",body:"Hatchback",price:10900,year:2019,km:62000,discount:7,engine:"1,400cc",trans:"AT",drive:"2WD",wheel:"LHD",image:"https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV008",brand:"Subaru",model:"Forester",body:"SUV",price:16800,year:2020,km:48000,discount:15,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
+{id:"DRV009",brand:"Suzuki",model:"Jimny",body:"SUV",price:21210,year:2025,km:2355,discount:4,engine:"1,500cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1537984822441-cff330075342?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
 {id:"DRV010",brand:"Mazda",model:"CX-5",body:"SUV",price:17900,year:2021,km:33000,discount:9,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=900&q=80",status:"available"}
 ];
 
@@ -64,7 +64,20 @@ function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n
 
 function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="brand-card" onclick="setBrand('${b}')"><img src="${brandImgs[i]}" onerror="this.style.display='none'"><div>${b}<br><small>(${(72188-i*4300).toLocaleString("en-US")})</small></div></button>`).join("");}
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
-function renderPopular(){const popular=[["Toyota","LAND CRUISER",1471,cars[4]?.image], ["Subaru","FORESTER",1435,cars[7]?.image], ["Toyota","HIACE VAN",3437,cars[4]?.image], ["Toyota","NOAH",2059,cars[0]?.image], ["Toyota","COROLLA AXIO",362,cars[3]?.image]];popularModels.innerHTML=popular.map(x=>`<div class="popular-card"><img src="${x[3]||""}"><div><small>${x[0]}</small><strong>${x[1]} <small>(${x[2].toLocaleString()})</small></strong></div></div>`).join("");}
+function renderPopular(){
+  const grouped={};
+  cars.forEach(c=>{
+    if(!c?.model) return;
+    const brand=String(c.brand||"").trim();
+    const model=String(c.model||"").trim();
+    const key=`${brand}|${model}`.toLowerCase();
+    if(!grouped[key]) grouped[key]={brand,model,views:0,car:c};
+    grouped[key].views+=Number(c.views||0);
+    if((c.image||"") && Number(c.views||0)>=Number(grouped[key].car?.views||0)) grouped[key].car=c;
+  });
+  const popular=Object.values(grouped).sort((a,b)=>b.views-a.views).slice(0,5);
+  popularModels.innerHTML=popular.length?popular.map(x=>`<div class="popular-card"><img src="${esc(x.car?.image||"")}" alt="${esc(x.brand+" "+x.model)}"><div><small>${esc(x.brand)}</small><strong>${esc(x.model)} <small>(${Number(x.views).toLocaleString()})</small></strong></div></div>`).join(""):`<p>Ainda não há visualizações registadas.</p>`;
+}
 function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
 function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
 function renderResults(list){
@@ -75,7 +88,7 @@ function renderResults(list){
     return `<article class="car-card ${reserved?'is-reserved':''} ${sold?'is-sold':''}">
       <div class="card-status">${statusHTML(c)}</div>
       <button class="heart" onclick="toggleFav('${esc(c.id)}',this)"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button>
-      <a href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"></a>
+      <a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a>
       <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">USD ${Number(c.price).toLocaleString()}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
       <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;

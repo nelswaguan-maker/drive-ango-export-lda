@@ -3,6 +3,8 @@
 
 create table if not exists public.drive_cars (
   id text primary key,
+  stock text not null default '',
+  views bigint not null default 0,
   brand text not null default '',
   model text not null default '',
   body text not null default 'SUV',
@@ -26,6 +28,8 @@ create table if not exists public.drive_cars (
   updated_at timestamptz not null default now()
 );
 
+alter table public.drive_cars add column if not exists stock text not null default '';
+alter table public.drive_cars add column if not exists views bigint not null default 0;
 alter table public.drive_cars add column if not exists weight text not null default '';
 alter table public.drive_cars add column if not exists published boolean not null default true;
 alter table public.drive_cars enable row level security;
@@ -61,3 +65,17 @@ begin
   alter publication supabase_realtime add table public.drive_cars;
 exception when duplicate_object then null;
 end $$;
+
+
+-- Incrementa visualizações sem permitir que o cliente altere outros dados do anúncio.
+create or replace function public.increment_car_view(p_car_id text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.drive_cars set views = coalesce(views,0) + 1 where id = p_car_id and published = true;
+$$;
+
+revoke all on function public.increment_car_view(text) from public;
+grant execute on function public.increment_car_view(text) to anon, authenticated;

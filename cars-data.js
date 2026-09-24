@@ -5,7 +5,7 @@
   function normalize(c){
     if(!c) return null;
     return {
-      id:c.id, brand:c.brand||"", model:c.model||"", body:c.body||"SUV", price:Number(c.price||0),
+      id:c.id, stock:c.stock||"", brand:c.brand||"", model:c.model||"", body:c.body||"SUV", price:Number(c.price||0),
       year:Number(c.year||0), km:Number(c.km||0), discount:Number(c.discount||0), engine:c.engine||"",
       weight:c.weight||"", trans:c.trans||"", drive:c.drive||"", wheel:c.wheel||"",
       images:Array.isArray(c.images)?c.images:[], image:c.image||((Array.isArray(c.images)&&c.images[0])||""),
@@ -14,13 +14,13 @@
       reservedUntil:c.reservedUntil?Number(c.reservedUntil):(c.reserved_until?new Date(c.reserved_until).getTime():null),
       createdAt:c.createdAt?Number(c.createdAt):(c.created_at?new Date(c.created_at).getTime():null),
       createdBy:c.createdBy||c.created_by||null,
-      updatedAt:c.updatedAt||c.updated_at||null
+      views:Number(c.views||0), updatedAt:c.updatedAt||c.updated_at||null
     };
   }
   function toRow(c,userId){
     const n=normalize(c);
     return {
-      id:n.id,brand:n.brand,model:n.model,body:n.body,price:n.price,year:n.year,km:n.km,discount:n.discount,
+      id:n.id,stock:n.stock,brand:n.brand,model:n.model,body:n.body,price:n.price,year:n.year,km:n.km,discount:n.discount,
       engine:n.engine,weight:n.weight,trans:n.trans,drive:n.drive,wheel:n.wheel,images:n.images,image:n.image,
       status:n.status, published:n.published!==false,
       reserved_at:n.reservedAt?new Date(n.reservedAt).toISOString():null,

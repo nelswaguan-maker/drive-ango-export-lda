@@ -194,7 +194,7 @@ $("carForm")?.addEventListener("submit",async e=>{
     let images=editingImages.slice();
     if(files.length) images=await uploadCarPhotos(files,baseId);
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
-    const base={brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||"",published:$("published").checked};
+    const base={stock:$("stock").value.trim(),brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||"",published:$("published").checked};
     let target;
     if(id){
       target=getCar(id);
@@ -215,7 +215,7 @@ $("carForm")?.addEventListener("submit",async e=>{
 function editCar(id){
   if(!has("edit"))return;
   const c=getCar(id);if(!c)return;
-  for(const k of ["brand","model","body","price","year","km","discount","engine","weight","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  for(const k of ["stock","brand","model","body","price","year","km","discount","engine","weight","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
   if($("published"))$("published").checked=c.published!==false;
   editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
   if($("carPhotos"))$("carPhotos").value="";
