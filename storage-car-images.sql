@@ -19,6 +19,7 @@ to authenticated
 with check (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
+  and public.admin_has_permission('publish')
 );
 
 drop policy if exists "Admins can update car images" on storage.objects;
@@ -28,10 +29,12 @@ to authenticated
 using (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
+  and public.admin_has_permission('edit')
 )
 with check (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
+  and public.admin_has_permission('edit')
 );
 
 drop policy if exists "Admins can delete car images" on storage.objects;
@@ -41,4 +44,5 @@ to authenticated
 using (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
+  and public.admin_has_permission('delete')
 );

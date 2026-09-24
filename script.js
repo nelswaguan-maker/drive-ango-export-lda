@@ -18,7 +18,7 @@ const seedCars=[
 let filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
 const brands=["Toyota","Honda","Nissan","Mazda","Suzuki","Mitsubishi","Daihatsu","Subaru","Hino","Volkswagen"];
 const brandImgs=["https://cdn.simpleicons.org/toyota","https://cdn.simpleicons.org/honda","https://cdn.simpleicons.org/nissan","https://cdn.simpleicons.org/mazda","https://cdn.simpleicons.org/suzuki","https://cdn.simpleicons.org/mitsubishi","https://cdn.simpleicons.org/daihatsu","https://cdn.simpleicons.org/subaru","https://cdn.simpleicons.org/hino","https://cdn.simpleicons.org/volkswagen"];
-const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck"];
+const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van"];
 
 function loadCars(){
   let stored=JSON.parse(localStorage.getItem(KEY)||"null");
@@ -90,7 +90,7 @@ function renderResults(list){
       <button class="heart" onclick="toggleFav('${esc(c.id)}',this)"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button>
       <a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a>
       <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">USD ${Number(c.price).toLocaleString()}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
-      <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
+      <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   updateCountdowns();
 }
@@ -220,7 +220,7 @@ function showLegalConsentGate(){
   return new Promise(resolve=>{
     if(document.getElementById("legalGate"))return;
     const wrap=document.createElement("div");wrap.id="legalGate";wrap.className="legal-gate";
-    wrap.innerHTML=`<div class="legal-gate-box"><h2>Antes de continuar</h2><p>Para usar o Drive ANGO Export, confirma que leste e aceitas a Política de Privacidade e os Termos de Uso.</p><label class="legal-check"><input id="gateConsent" type="checkbox"> <span>Aceito a <a href="politica-privacidade.html" target="_blank">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button id="gateAccept" disabled>Continuar</button></div>`;
+    wrap.innerHTML=`<div class="legal-gate-box"><h2>Antes de continuar</h2><p>Para usar o Drive ANGO Export, confirma que leste e aceitas a Política de Privacidade e os Termos de Uso.</p><label class="legal-check"><input id="gateConsent" type="checkbox"> <span>Aceito a <a href="politica-privacidade.html" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button id="gateAccept" disabled>Continuar</button></div>`;
     document.body.appendChild(wrap);
     const check=wrap.querySelector("#gateConsent"),btn=wrap.querySelector("#gateAccept");
     check.onchange=()=>btn.disabled=!check.checked;

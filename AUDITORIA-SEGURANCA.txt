@@ -1,0 +1,27 @@
+AUDITORIA DE SEGURANÇA — DRIVE ANGO EXPORT LDA
+Data: 24/09/2026
+
+RESULTADO
+Não foi encontrada evidência no código de malware, roubo de credenciais ou Service Role Key exposta.
+A auditoria encontrou, porém, uma falha real de autorização no SQL original que poderia permitir elevação de privilégios por um utilizador autenticado. Isso não prova que alguém tenha explorado a falha.
+
+FALHA PRINCIPAL ENCONTRADA
+A política original de UPDATE em public.profiles permitia ao próprio utilizador atualizar a sua linha. Como role e blocked estavam nessa mesma linha, um utilizador podia tentar alterar role para 'admin'. A função is_current_user_admin() confiava nesse role.
+
+CORREÇÃO
+Foi adicionado o trigger protect_profile_privileges(), que impede utilizadores e administradores convidados de alterar diretamente role, blocked ou email. O Proprietário Principal continua a poder gerir esses campos através do fluxo administrativo.
+
+OUTRA CORREÇÃO
+As permissões publish/edit/manage_status/delete dos administradores convidados estavam sendo verificadas apenas pelo JavaScript. Um utilizador poderia contornar a interface e chamar diretamente a API. Foi adicionada a função admin_has_permission() e um trigger no banco para aplicar as permissões também no servidor.
+
+STORAGE
+Upload, alteração e eliminação de imagens passaram a respeitar as permissões correspondentes.
+
+FUNÇÕES
+As funções administrativas e os helpers de segurança tiveram o EXECUTE público revogado quando não é necessário.
+
+O QUE AINDA NÃO FOI POSSÍVEL VERIFICAR
+Não tenho acesso aos logs da instância Supabase/Vercel neste ambiente. Portanto não é possível afirmar se alguém tentou explorar a falha no passado. Para isso é necessário consultar os logs do projeto Supabase e os registos de autenticação.
+
+IMPORTANTE
+Para uma instalação que já está em produção, execute primeiro supabase-security-hardening.sql no Supabase SQL Editor. O ZIP também contém a versão principal do schema já corrigida.

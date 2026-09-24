@@ -15,9 +15,9 @@ IMPORTANTE:
 2. O conteúdo deste ZIP deve ser usado na raiz do projeto, onde index.html, robots.txt e sitemap.xml ficam diretamente na raiz.
 3. Não crie um segundo projeto para robots/sitemap.
 4. Depois do primeiro deployment, teste:
-   https://SEU-DOMINIO.vercel.app/robots.txt
-   https://SEU-DOMINIO.vercel.app/sitemap.xml
-5. Se usar o domínio ango-export-lda.vercel.app, o robots.txt e sitemap.xml já apontam para esse endereço.
+   https://drive-ango-export-lda.vercel.app/robots.txt
+   https://drive-ango-export-lda.vercel.app/sitemap.xml
+5. O robots.txt e o sitemap.xml já apontam para drive-ango-export-lda.vercel.app.
 6. A configuração do Supabase já está incluída no projeto. O SQL não precisa ser executado novamente se as tabelas/funções já foram criadas no projeto Supabase.
 
 NOTA:
