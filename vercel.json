@@ -9,7 +9,7 @@
         {"key": "X-Frame-Options", "value": "DENY"},
         {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"},
         {"key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()"},
-        {"key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.simpleicons.org https://shetxacvyexxbyrniyhg.supabase.co; connect-src 'self' https://shetxacvyexxbyrniyhg.supabase.co wss://shetxacvyexxbyrniyhg.supabase.co; frame-src 'self' https://shetxacvyexxbyrniyhg.supabase.co;"}
+        {"key": "Content-Security-Policy", "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://images.unsplash.com https://cdn.simpleicons.org https://shetxacvyexxbyrniyhg.supabase.co; connect-src 'self' https://shetxacvyexxbyrniyhg.supabase.co wss://shetxacvyexxbyrniyhg.supabase.co https://open.er-api.com; frame-src 'self' https://shetxacvyexxbyrniyhg.supabase.co;"}
       ]
     }
   ]

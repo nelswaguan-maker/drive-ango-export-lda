@@ -40,8 +40,9 @@ function subscribeCarsRealtime(){
   });
 }
 
+function isOwnerEmail(email){return ["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(email||"").trim().toLowerCase());}
 function isOwner(){
-  return (currentAdminUser?.email||"").toLowerCase()==="nelswaguan@gmail.com";
+  return ["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes((currentAdminUser?.email||"").trim().toLowerCase());
 }
 let currentPermissions={};
 function has(p){return isOwner()||currentPermissions?.[p]===true;}
@@ -56,6 +57,13 @@ async function loadPermissions(){
 function guard(){
   if(!currentAdminUser){ $("loginScreen")?.classList.remove("hidden"); $("panel")?.classList.add("hidden"); return false; }
   $("loginScreen")?.classList.add("hidden"); $("panel")?.classList.remove("hidden"); return true;
+}
+
+function updateAdminPricePreview(){
+  const el=document.getElementById("priceMznPreview"); const input=document.getElementById("price");
+  if(!el||!input)return; const usd=Number(input.value||0);
+  const r=window.driveCurrency?.getRate?.()||0;
+  el.textContent=r>0?`Câmbio automático: 1 USD ≈ ${r.toLocaleString("pt-MZ",{maximumFractionDigits:2})} MT · ${usd.toLocaleString("en-US")} USD ≈ ${(usd*r).toLocaleString("pt-MZ",{maximumFractionDigits:0})} MT`:'Câmbio automático: a obter…';
 }
 
 async function init(){
@@ -78,7 +86,7 @@ async function loginAdmin(){
   currentAdminUser=data.user;
   const signedEmail=String(data.user?.email||"").trim().toLowerCase();
   // O proprietário tem prioridade absoluta: um convite antigo nunca pode bloquear o login.
-  if(signedEmail==="nelswaguan@gmail.com"){
+  if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(signedEmail)){
     localStorage.removeItem("drivePendingAdminInvite");
   }else{
     const pending=localStorage.getItem("drivePendingAdminInvite");
@@ -135,7 +143,7 @@ function draw(){
   $("list").innerHTML=cars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;
-    return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · USD ${Number(c.price).toLocaleString()} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
+    return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · ${driveFormatMoney(c.price)} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
     ${has("publish")?`<button class="secondary" onclick="togglePublished('${esc(c.id)}')">${pub?"Ocultar do site":"Publicar no site"}</button>`:""}
     ${has("edit")?`<button class="secondary" onclick="editCar('${esc(c.id)}')">Editar</button>`:""}
     ${has("manageStatus")&&c.status==="available"?`<button onclick="reserveCar('${esc(c.id)}')">Reservar 48h</button><button onclick="sellCar('${esc(c.id)}')">Vendido</button>`:""}
@@ -289,7 +297,7 @@ async function drawAdmins(){
   const {data,error}=await sb().from("profiles").select("id,name,email,role,blocked,created_at").eq("role","admin").order("created_at",{ascending:true});
   if(error){console.error(error);$("adminsList").innerHTML="<p>Não foi possível carregar os administradores.</p>";return;}
   $("adminsList").innerHTML=(data||[]).map(a=>{
-    const owner=(a.email||"").toLowerCase()==="nelswaguan@gmail.com";
+    const owner=isOwnerEmail(a.email||"");
     return `<div class="admin-item"><div><b>${esc(a.name||"Administrador")}</b><small>${esc(a.email||"")} · ${owner?"👑 Proprietário Principal":"🛡️ Administrador"}${a.blocked?" · BLOQUEADO":""}</small></div>
     ${owner?`<strong>CONTROLO TOTAL</strong>`:`<div class="item-actions"><button onclick="toggleBlock('${esc(a.id)}',${!a.blocked})">${a.blocked?"Desbloquear":"Bloquear"}</button><button class="danger" onclick="removeAdmin('${esc(a.id)}')">Remover</button></div>`}</div>`;
   }).join("")||"<p>Nenhum administrador.</p>";
@@ -324,7 +332,7 @@ async function acceptInvite(){
   if(name.length<2||pass.length<8||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais (mínimo 8 caracteres).";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:(location.origin+"/admin.html?invite="+encodeURIComponent(token))}});
+  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:window.location.origin+"/admin.html?invite="+encodeURIComponent(token)}});
   if(error){
     if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
     msg.textContent=error.message;return;
@@ -372,10 +380,6 @@ $("contactForm")?.addEventListener("submit",e=>{e.preventDefault();if(!isOwner()
 
 document.addEventListener("DOMContentLoaded",async()=>{
   const params=new URLSearchParams(location.search);
-  // Convite recebido por WhatsApp: guardar imediatamente para sobreviver
-  // à confirmação de email e manter o utilizador dentro do fluxo Admin.
-  const inviteToken=params.get("invite");
-  if(inviteToken) localStorage.setItem("drivePendingAdminInvite",inviteToken);
 
   // Se o convite já foi usado/criado, nunca voltar a mostrar o formulário.
   // Primeiro tentamos concluir um convite pendente com a sessão atual.
@@ -385,7 +389,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
       currentAdminUser=session.user;
       // Se a conta já é administradora, um convite antigo nunca deve
       // voltar a ser processado nem mostrar erro.
-      const owner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+      const owner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(session.user.email||"").trim().toLowerCase());
       let alreadyAdmin=owner;
       if(!alreadyAdmin){
         try{
@@ -435,3 +439,6 @@ document.addEventListener("click", (event) => {
   button.textContent = showing ? "🙈" : "👁";
   button.setAttribute("aria-label", showing ? "Ocultar senha" : "Mostrar senha");
 });
+
+window.addEventListener("driveExchangeUpdated",updateAdminPricePreview);
+window.addEventListener("driveCurrencyChanged",updateAdminPricePreview);

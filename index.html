@@ -3,16 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script>
-    // Compatibilidade: convites antigos que ainda apontam para index.html
-    // são enviados diretamente para o fluxo de convite do painel Admin.
-    (function(){
-      try {
-        var p=new URLSearchParams(location.search), token=p.get("adminInvite");
-        if(token){ location.replace("admin.html?invite="+encodeURIComponent(token)); }
-      } catch(e) {}
-    })();
-  </script>
   <meta name="google-site-verification" content="ef0guAb7B4zT041IA3zyQw9260Szh5Q1IduLtYkTArc" />
   <title>DRIVE — Carros do Japão</title>
   <link rel="stylesheet" href="style.css">
@@ -204,7 +194,7 @@
   <div class="footer-bottom">
     <p>Notícias do DRIVE ↗</p><p>Boletim de Notícias ↗</p>
     <label>Escritório Global</label><select><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>
-    <p>🌐 Português / ($) USD⌄</p><p>📍 MOZAMBIQUE⌄</p>
+    <p>🌐 Português / <select data-drive-currency onchange="driveCurrency.set(this.value)" aria-label="Moeda"><option value="MT">MT (Metical)</option><option value="USD">USD (Dólar)</option></select>⌄</p><p data-drive-rate>A obter câmbio…</p><p>📍 MOZAMBIQUE⌄</p>
     <small><a href="termos.html">Termos de Uso</a><br><br><a href="politica-privacidade.html">Política de Privacidade</a></small>
   </div>
 </footer>
@@ -212,6 +202,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="cars-data.js"></script>
+<script src="currency.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

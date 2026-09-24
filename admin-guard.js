@@ -12,7 +12,7 @@ window.requireAdmin = async function(){
   }
 
   const email = String(user.email||"").trim().toLowerCase();
-  const isOwner = email === "nelswaguan@gmail.com";
+  const isOwner = ["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(email);
   if(isOwner) return user;
 
   const {data:allowed,error:rpcError}=await sb.rpc("is_current_user_admin");

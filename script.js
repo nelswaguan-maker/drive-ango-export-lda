@@ -78,7 +78,7 @@ function renderPopular(){
   const popular=Object.values(grouped).sort((a,b)=>b.views-a.views).slice(0,5);
   popularModels.innerHTML=popular.length?popular.map(x=>`<div class="popular-card"><img src="${esc(x.car?.image||"")}" alt="${esc(x.brand+" "+x.model)}"><div><small>${esc(x.brand)}</small><strong>${esc(x.model)} <small>(${Number(x.views).toLocaleString()})</small></strong></div></div>`).join(""):`<p>Ainda não há visualizações registadas.</p>`;
 }
-function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
+function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">${driveFormatMoney(c.price)}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
 function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
 function renderResults(list){
   resultsGrid.innerHTML=list.length?list.map(c=>{
@@ -89,7 +89,7 @@ function renderResults(list){
       <div class="card-status">${statusHTML(c)}</div>
       <button class="heart" onclick="toggleFav('${esc(c.id)}',this)"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button>
       <a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a>
-      <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">USD ${Number(c.price).toLocaleString()}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
+      <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${driveFormatMoney(c.price)}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
       <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   updateCountdowns();
@@ -98,7 +98,8 @@ function applyFilters(){renderResults(filtered());results.scrollIntoView({behavi
 function clearFilters(){filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);if(document.getElementById("quickSearch"))quickSearch.value="";renderResults(cars);}
 function setBrand(b){filter.brand=b;brandText.textContent=b;applyFilters()}
 function setBody(b){filter.body=b;bodyText.textContent=b;applyFilters()}
-function setPrice(a,b){filter.minPrice=a;filter.maxPrice=b;priceText.textContent=b>=9999999?`Acima de $${a.toLocaleString()}`:`$${a.toLocaleString()} - $${b.toLocaleString()}`;applyFilters()}
+function setPrice(a,b){filter.minPrice=a;filter.maxPrice=b;updatePriceFilterText(a,b);applyFilters()}
+function updatePriceFilterText(a=filter.minPrice,b=filter.maxPrice){if(!priceText)return;const mt=driveCurrency.get()==="MT";const fmt=n=>mt&&driveCurrency.getRate()>0?`MT ${driveCurrency.convert(n).toLocaleString("pt-MZ",{maximumFractionDigits:0})}`:`${mt?"MT":"$"}${n.toLocaleString("en-US")}`;priceText.textContent=b>=9999999?`Acima de ${fmt(a)}`:`${fmt(a)} - ${fmt(b)}`;}
 function setDiscount(n){filter.discount=n;applyFilters()}
 function tagSearch(t){filter.search=t;if(document.getElementById("quickSearch"))quickSearch.value=t;applyFilters()}
 function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();applyFilters()}
@@ -185,7 +186,7 @@ async function refreshAdminState(user){
   const accountLink=document.getElementById("adminAccountLink");
   if(!user||!window.driveSupabase){adminLinks.forEach(e=>e.style.display="none");if(accountLink)accountLink.style.display="none";return false;}
   const email=String(user.email||"").trim().toLowerCase();
-  const isOwner=email==="nelswaguan@gmail.com";
+  const isOwner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(email||"").trim().toLowerCase());
   let rpcAdmin=false;
   try{const {data,error}=await window.driveSupabase.rpc("is_current_user_admin");rpcAdmin=!error&&data===true;}catch(e){console.warn("Verificação de administrador:",e);}
   currentClientIsAdmin=isOwner||rpcAdmin;
@@ -244,7 +245,7 @@ async function clientSignup(e){
   if(name.length<2){alert("Introduza o seu nome completo.");return;}if(phone.length<7){alert("Introduza um número de telefone válido.");return;}if(pass.length<8){alert("A senha deve ter pelo menos 8 caracteres.");return;}if(pass!==confirm){alert("As senhas não coincidem.");return;}
   form.dataset.busy="1";const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A criar conta...";}
   const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
-  const emailRedirectTo=window.location.origin+"/index.html"+(pendingInvite?"?adminInvite="+encodeURIComponent(pendingInvite)+"&openLogin=1":"?openLogin=1");
+  const emailRedirectTo=window.location.origin+(pendingInvite?"/admin.html?invite="+encodeURIComponent(pendingInvite):"/index.html?openLogin=1");
   const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone},emailRedirectTo}});
   form.dataset.busy="0";if(button){button.disabled=false;button.textContent="Criar conta";}
   if(error){const msg=(error.message||"").toLowerCase();if(msg.includes("rate limit")||msg.includes("email rate limit"))alert("O Supabase atingiu temporariamente o limite de emails. Não repitas a tentativa agora; aguarda o limite ser renovado e tenta novamente uma vez.");else alert(error.message);return;}
@@ -258,8 +259,10 @@ async function clientSignup(e){
   const accepted=await requireLegalConsent(data.user);
   if(!accepted)return;
   const acceptedInvite=await claimPendingAdminInvite();
-  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();
-  if(acceptedInvite) alert("Convite de administrador ativado. Agora podes abrir Administração.");alert(currentClientIsAdmin?"Conta criada com sucesso! O teu acesso de Administração foi ativado.":"Conta criada com sucesso!");
+  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);
+  if(acceptedInvite){ localStorage.removeItem("drivePendingAdminInvite"); location.replace("admin.html"); return; }
+  showClientAccount(profile);closeClientModal();
+  alert(currentClientIsAdmin?"Conta criada com sucesso! O teu acesso de Administração foi ativado.":"Conta criada com sucesso!");
   }
   else{
     showClientLogin();
@@ -272,7 +275,7 @@ async function clientLogin(e){
   const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
   if(error){alert("Email ou senha incorretos.");return;}
   // O proprietário nunca deve ficar preso a um convite antigo.
-  if(String(data.user?.email||"").trim().toLowerCase()==="nelswaguan@gmail.com")
+  if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(data.user?.email||"").trim().toLowerCase()))
     localStorage.removeItem("drivePendingAdminInvite");
   const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();
 }
@@ -282,7 +285,7 @@ async function loginWithGoogle(){
   localStorage.setItem("driveLegalConsentIntent","1");
   if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
   const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
-  const redirectTo=window.location.origin+"/index.html"+(pendingInvite?"?adminInvite="+encodeURIComponent(pendingInvite)+"&openLogin=1":"?openLogin=1");
+  const redirectTo=window.location.origin+(pendingInvite?"/admin.html?invite="+encodeURIComponent(pendingInvite):"/index.html?openLogin=1");
   const {error}=await window.driveSupabase.auth.signInWithOAuth({
     provider:"google",
     options:{redirectTo}
@@ -322,14 +325,19 @@ async function initClientModal(){
   const googleBtn=document.getElementById("googleLoginBtn");
   if(googleConsent&&googleBtn)googleConsent.addEventListener("change",()=>googleBtn.disabled=!googleConsent.checked);
   const adminInvite=new URLSearchParams(location.search).get("adminInvite");
-  if(adminInvite){localStorage.setItem("drivePendingAdminInvite",adminInvite);openClientModal();showClientSignup();}
+  if(adminInvite){
+    localStorage.setItem("drivePendingAdminInvite",adminInvite);
+    // Convites de administrador não devem cair na página inicial.
+    location.replace("admin.html?invite="+encodeURIComponent(adminInvite));
+    return;
+  }
   if(!window.driveSupabase){updateClientHeader(null);return;}
   const {data:{session}}=await window.driveSupabase.auth.getSession();
   const recovery=new URLSearchParams(location.search).get("reset")==="1" || window.location.hash.includes("type=recovery");
   if(recovery && session){showClientReset();}
   else if(session){
     currentClientUser=session.user;
-    const isOwner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+    const isOwner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(session.user.email||"").trim().toLowerCase());
     if(isOwner) localStorage.removeItem("drivePendingAdminInvite");
     else await claimPendingAdminInvite();
     const accepted=await requireLegalConsent(session.user);
@@ -340,7 +348,7 @@ async function initClientModal(){
     if(event==="PASSWORD_RECOVERY"){showClientReset();return;}
     if(session){
       currentClientUser=session.user;
-      const isOwner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+      const isOwner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(session.user.email||"").trim().toLowerCase());
       if(isOwner) localStorage.removeItem("drivePendingAdminInvite");
       else await claimPendingAdminInvite();
       const accepted=await requireLegalConsent(session.user);
@@ -383,3 +391,6 @@ document.addEventListener("click", (event) => {
   button.textContent = showing ? "🙈" : "👁";
   button.setAttribute("aria-label", showing ? "Ocultar senha" : "Mostrar senha");
 });
+
+window.addEventListener("driveCurrencyChanged",()=>{updatePriceFilterText();renderPopular();renderRecent();renderResults(filtered());});
+window.addEventListener("driveExchangeUpdated",()=>{updatePriceFilterText();renderRecent();renderResults(filtered());});

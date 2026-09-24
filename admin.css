@@ -14,3 +14,4 @@
 .password-field input{padding-right:52px!important;margin:6px 0!important}
 .password-field .show-pass{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:40px!important;height:40px!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:#666!important;font-size:19px!important;cursor:pointer;z-index:2}
 .password-field .show-pass:hover{color:#e90016!important}
+.price-preview{display:block;margin:-4px 0 10px;font-size:.82rem;opacity:.75}

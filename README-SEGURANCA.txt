@@ -22,3 +22,6 @@ Correções aplicadas:
 
 IMPORTANTE:
 Este pacote não garante, por si só, a remoção de um alerta do Google Safe Browsing. O alerta pode ser baseado na reputação/estado de segurança do domínio ou em conteúdo externo. Depois do novo deploy, se o Chrome continuar mostrando "Site perigoso", é necessário verificar o domínio no Google Search Console/Transparency Report e solicitar uma revisão de segurança após confirmar que o deployment ativo corresponde a este pacote.
+
+
+PROPRIETÁRIOS PRINCIPAIS: nelswaguan@gmail.com, editojosejoaquim812@gmail.com e jojomilagre@gmail.com.
