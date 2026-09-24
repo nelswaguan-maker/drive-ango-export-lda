@@ -427,3 +427,8 @@ returns void language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.increment_car_view(text) from public;
 grant execute on function public.increment_car_view(text) to anon, authenticated;
+
+
+-- DRIVE CARS: novos campos do anúncio (cilindrada, combustível e porto de chegada)
+alter table if exists public.drive_cars add column if not exists fuel text not null default '';
+alter table if exists public.drive_cars add column if not exists arrival_port text not null default '';

@@ -13,6 +13,8 @@ create table if not exists public.drive_cars (
   km integer not null default 0,
   discount numeric not null default 0,
   engine text not null default '',
+  fuel text not null default '',
+  arrival_port text not null default '',
   weight text not null default '',
   trans text not null default '',
   drive text not null default '',
@@ -31,6 +33,8 @@ create table if not exists public.drive_cars (
 alter table public.drive_cars add column if not exists stock text not null default '';
 alter table public.drive_cars add column if not exists views bigint not null default 0;
 alter table public.drive_cars add column if not exists weight text not null default '';
+alter table public.drive_cars add column if not exists fuel text not null default '';
+alter table public.drive_cars add column if not exists arrival_port text not null default '';
 alter table public.drive_cars add column if not exists published boolean not null default true;
 alter table public.drive_cars enable row level security;
 
