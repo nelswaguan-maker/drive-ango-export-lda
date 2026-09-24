@@ -3,6 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Compatibilidade: convites antigos que ainda apontam para index.html
+    // são enviados diretamente para o fluxo de convite do painel Admin.
+    (function(){
+      try {
+        var p=new URLSearchParams(location.search), token=p.get("adminInvite");
+        if(token){ location.replace("admin.html?invite="+encodeURIComponent(token)); }
+      } catch(e) {}
+    })();
+  </script>
   <meta name="google-site-verification" content="ef0guAb7B4zT041IA3zyQw9260Szh5Q1IduLtYkTArc" />
   <title>DRIVE — Carros do Japão</title>
   <link rel="stylesheet" href="style.css">

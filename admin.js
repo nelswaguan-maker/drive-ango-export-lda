@@ -259,7 +259,7 @@ async function removeCar(id){
 
 /* ===== CONVITE PELO WHATSAPP ===== */
 function normalizeWhatsApp(phone){return String(phone||"").replace(/[^0-9]/g,"");}
-function inviteUrl(token){return new URL("index.html?adminInvite="+encodeURIComponent(token)+"&openSignup=1",location.href).href;}
+function inviteUrl(token){return new URL("admin.html?invite="+encodeURIComponent(token),location.href).href;}
 function makeWhatsAppUrl(phone,token){
   const digits=normalizeWhatsApp(phone);
   const message=`Olá! Foste convidado(a) para ser administrador do Drive Cars.\n\nAceita o convite aqui: ${inviteUrl(token)}\n\nEste convite é pessoal e deve ser usado para criar a tua conta.`;
@@ -324,7 +324,7 @@ async function acceptInvite(){
   if(name.length<2||pass.length<8||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais (mínimo 8 caracteres).";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:"https://drive-ango-export-lda.vercel.app/index.html"}});
+  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:(location.origin+"/admin.html?invite="+encodeURIComponent(token))}});
   if(error){
     if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
     msg.textContent=error.message;return;
@@ -372,6 +372,10 @@ $("contactForm")?.addEventListener("submit",e=>{e.preventDefault();if(!isOwner()
 
 document.addEventListener("DOMContentLoaded",async()=>{
   const params=new URLSearchParams(location.search);
+  // Convite recebido por WhatsApp: guardar imediatamente para sobreviver
+  // à confirmação de email e manter o utilizador dentro do fluxo Admin.
+  const inviteToken=params.get("invite");
+  if(inviteToken) localStorage.setItem("drivePendingAdminInvite",inviteToken);
 
   // Se o convite já foi usado/criado, nunca voltar a mostrar o formulário.
   // Primeiro tentamos concluir um convite pendente com a sessão atual.
