@@ -80,15 +80,23 @@ async function loginAdmin(){
   if(!email||!pass){$("loginMsg").textContent="Introduz o email e a senha.";return;}
   const {data,error}=await sb().auth.signInWithPassword({email,password:pass});
   if(error){$("loginMsg").textContent="Email ou senha incorretos.";return;}
-  const pending=localStorage.getItem("drivePendingAdminInvite");
-  if(pending){
-    try{
-      const ok=await claimInvite(pending);
-      if(!ok)return;
-      alert("Convite aceite. A tua conta agora é administradora.");
-    }catch(err){$("loginMsg").textContent=err.message||"Não foi possível concluir o convite.";return;}
-  }
   currentAdminUser=data.user;
+  const signedEmail=String(data.user?.email||"").trim().toLowerCase();
+  // O proprietário tem prioridade absoluta: um convite antigo nunca pode bloquear o login.
+  if(signedEmail==="nelswaguan@gmail.com"){
+    localStorage.removeItem("drivePendingAdminInvite");
+  }else{
+    const pending=localStorage.getItem("drivePendingAdminInvite");
+    if(pending){
+      try{
+        const ok=await claimInvite(pending);
+        if(!ok){localStorage.removeItem("drivePendingAdminInvite");}
+        else alert("Convite aceite. A tua conta agora é administradora.");
+      }catch(err){
+        localStorage.removeItem("drivePendingAdminInvite");
+      }
+    }
+  }
   await init();
 }
 

@@ -257,6 +257,9 @@ async function clientLogin(e){
   const email=document.getElementById("loginEmail").value.trim().toLowerCase(),pass=document.getElementById("loginPass").value;
   const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
   if(error){alert("Email ou senha incorretos.");return;}
+  // O proprietário nunca deve ficar preso a um convite antigo.
+  if(String(data.user?.email||"").trim().toLowerCase()==="nelswaguan@gmail.com")
+    localStorage.removeItem("drivePendingAdminInvite");
   const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();
 }
 
@@ -310,11 +313,25 @@ async function initClientModal(){
   const {data:{session}}=await window.driveSupabase.auth.getSession();
   const recovery=new URLSearchParams(location.search).get("reset")==="1" || window.location.hash.includes("type=recovery");
   if(recovery && session){showClientReset();}
-  else if(session){currentClientUser=session.user;await claimPendingAdminInvite();const accepted=await requireLegalConsent(session.user);if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);showClientAccount(profile);}}
+  else if(session){
+    currentClientUser=session.user;
+    const isOwner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+    if(isOwner) localStorage.removeItem("drivePendingAdminInvite");
+    else await claimPendingAdminInvite();
+    const accepted=await requireLegalConsent(session.user);
+    if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);showClientAccount(profile);}
+  }
   else{updateClientHeader(null);await refreshAdminState(null);}
   window.driveSupabase.auth.onAuthStateChange(async (event,session)=>{
     if(event==="PASSWORD_RECOVERY"){showClientReset();return;}
-    if(session){currentClientUser=session.user;await claimPendingAdminInvite();const accepted=await requireLegalConsent(session.user);if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);if(!recovery)showClientAccount(profile);}}
+    if(session){
+      currentClientUser=session.user;
+      const isOwner=String(session.user.email||"").trim().toLowerCase()==="nelswaguan@gmail.com";
+      if(isOwner) localStorage.removeItem("drivePendingAdminInvite");
+      else await claimPendingAdminInvite();
+      const accepted=await requireLegalConsent(session.user);
+      if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);if(!recovery)showClientAccount(profile);}
+    }
     else{currentClientUser=null;currentClientProfile=null;currentClientIsAdmin=false;updateClientHeader(null);await refreshAdminState(null);showClientLogin();}
   });
 }
