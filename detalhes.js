@@ -1,7 +1,6 @@
 const id=new URLSearchParams(location.search).get("id");
-let cars=JSON.parse(localStorage.getItem("driveCars")||"[]");
-const fallback=[{id:"DRV001",brand:"Toyota",model:"RAV4",body:"SUV",price:18500,year:2022,km:23500,engine:"2,000cc",weight:"—",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1200&q=80",status:"available"}];
-let car=cars.find(x=>x.id===id)||(cars[0]||fallback[0]);
+let cars=[];
+let car=null;
 let currentImageIndex=0;
 const contact=localStorage.getItem("driveContact")||"";
 const phone=contact.replace(/\D/g,"");
@@ -26,11 +25,26 @@ function render(){
   renderImage();
 }
 async function initDetails(){
-  if(window.driveCarsData){
-    try{const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});if(!error){cars=data;car=cars.find(x=>x.id===id)||null;localStorage.setItem("driveCars",JSON.stringify(cars));if(car)render();else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';}}catch(e){console.warn(e);}
+  if(!window.driveCarsData || !window.driveSupabase){
+    document.getElementById("detail").innerHTML='<div class="info"><h1>Catálogo indisponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';
+    return;
   }
-  render();
-  if(window.driveCarsData){window.driveCarsData.subscribe(async()=>{const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});if(!error){cars=data;car=cars.find(x=>x.id===id)||null;localStorage.setItem("driveCars",JSON.stringify(cars));if(car)render();else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';}});}
+  const refresh=async()=>{
+    try{
+      const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
+      if(error) throw error;
+      cars=Array.isArray(data)?data:[];
+      car=cars.find(x=>x.id===id)||null;
+      if(car) render();
+      else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';
+    }catch(e){
+      console.warn("Detalhes do catálogo:",e);
+      document.getElementById("detail").innerHTML='<div class="info"><h1>Não foi possível carregar este anúncio.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';
+    }
+  };
+  await refresh();
+  window.driveCarsData.subscribe(refresh);
 }
+
 document.addEventListener("DOMContentLoaded",initDetails);
 setInterval(()=>{if(car.status==="reserved"){const el=document.querySelector(".detail-status");if(el)el.textContent=`RESERVADO — ${countdown(car.reservedUntil)}`;}},1000);

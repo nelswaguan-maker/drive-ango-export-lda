@@ -8,7 +8,10 @@ const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
 function sb(){return window.driveSupabase;}
-function readCars(){cars=JSON.parse(localStorage.getItem(KEY)||"[]"); return cars;}
+function readCars(){
+  try{cars=JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){cars=[];}
+  return Array.isArray(cars)?cars:[];
+}
 function saveCars(list=cars){
   cars=Array.isArray(list)?list:cars;
   localStorage.setItem(KEY,JSON.stringify(cars));
@@ -22,20 +25,12 @@ async function syncCarsFromBackend(){
   return true;
 }
 async function loadCarsFromBackend(){
-  if(!window.driveCarsData || !sb()){ readCars(); return; }
+  if(!window.driveCarsData || !sb()){cars=[];return;}
   const {data,error}=await window.driveCarsData.fetchCars();
-  if(error){console.warn("Catálogo online:",error.message);readCars();return;}
-  if(data.length){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
-  readCars();
-  if(isOwner() && cars.length){
-    const r=await window.driveCarsData.upsertCars(cars,currentAdminUser.id);
-    if(!r.error){
-      const fresh=await window.driveCarsData.fetchCars();
-      if(!fresh.error){cars=fresh.data;localStorage.setItem(KEY,JSON.stringify(cars));}
-    }
-  } else {
-    cars=[];localStorage.setItem(KEY,JSON.stringify(cars));
-  }
+  if(error){console.error("Catálogo online:",error.message);cars=[];return;}
+  // Supabase é a única fonte de verdade para os anúncios compartilhados.
+  cars=Array.isArray(data)?data:[];
+  localStorage.setItem(KEY,JSON.stringify(cars));
 }
 function subscribeCarsRealtime(){
   if(!window.driveCarsData || window.driveCarsRealtime) return;
@@ -124,8 +119,19 @@ function getCar(id){return cars.find(c=>c.id===id)}
 function draw(){
   if(!currentAdminUser)return;
   const now=Date.now();let changed=false;
-  cars=cars.map(c=>{if(c.status==="reserved"&&c.reservedUntil&&now>=c.reservedUntil){changed=true;return {...c,status:"available",reservedAt:null,reservedUntil:null};}return {...c,status:c.status||"available"};});
-  if(changed)saveCars();
+  const expired=[];
+  cars=cars.map(c=>{
+    if(c.status==="reserved"&&c.reservedUntil&&now>=c.reservedUntil){
+      const next={...c,status:"available",reservedAt:null,reservedUntil:null};
+      changed=true; expired.push(next); return next;
+    }
+    return {...c,status:c.status||"available"};
+  });
+  if(changed && window.driveCarsData && currentAdminUser){
+    Promise.all(expired.map(c=>window.driveCarsData.upsertCar(c,currentAdminUser.id)))
+      .then(()=>syncCarsFromBackend())
+      .catch(err=>console.warn("Atualização automática da reserva:",err));
+  }
   $("list").innerHTML=cars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;

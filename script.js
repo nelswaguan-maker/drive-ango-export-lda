@@ -35,11 +35,12 @@ async function loadPublicCars(){
   if(window.driveCarsData && window.driveSupabase){
     try{
       const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
-      if(!error){cars=data;localStorage.setItem(KEY,JSON.stringify(cars));return;}
-      if(error) console.warn("Catálogo online:",error.message);
+      if(!error){cars=Array.isArray(data)?data:[];localStorage.setItem(KEY,JSON.stringify(cars));return;}
+      console.warn("Catálogo online:",error.message);
     }catch(e){console.warn("Catálogo online:",e);}
   }
-  cars=loadCars();
+  // Não mostrar anúncios antigos de um único telefone quando o catálogo online falha.
+  cars=[];
 }
 function subscribePublicCars(){
   if(!window.driveCarsData || window.publicCarsRealtime) return;
@@ -63,8 +64,8 @@ function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n
 
 function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="brand-card" onclick="setBrand('${b}')"><img src="${brandImgs[i]}" onerror="this.style.display='none'"><div>${b}<br><small>(${(72188-i*4300).toLocaleString("en-US")})</small></div></button>`).join("");}
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
-function renderPopular(){const popular=[["Toyota","LAND CRUISER",1471,cars[4]?.image], ["Subaru","FORESTER",1435,cars[7]?.image], ["Toyota","HIACE VAN",3437,cars[4]?.image], ["Toyota","NOAH",2059,cars[0]?.image], ["Toyota","COROLLA AXIO",362,cars[3]?.image]];popularModels.innerHTML=popular.map(x=>`<div class="popular-card"><img src="${x[3]||cars[0].image}"><div><small>${x[0]}</small><strong>${x[1]} <small>(${x[2].toLocaleString()})</small></strong></div></div>`).join("");}
-function renderRecent(){const c=cars[8]||cars[0];recentCars.innerHTML=`<div class="recent-card"><img src="${c.image}"><div class="recent-info"><h3>2025/12 ${esc(c.brand.toUpperCase())} ${esc(c.model.toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
+function renderPopular(){const popular=[["Toyota","LAND CRUISER",1471,cars[4]?.image], ["Subaru","FORESTER",1435,cars[7]?.image], ["Toyota","HIACE VAN",3437,cars[4]?.image], ["Toyota","NOAH",2059,cars[0]?.image], ["Toyota","COROLLA AXIO",362,cars[3]?.image]];popularModels.innerHTML=popular.map(x=>`<div class="popular-card"><img src="${x[3]||""}"><div><small>${x[0]}</small><strong>${x[1]} <small>(${x[2].toLocaleString()})</small></strong></div></div>`).join("");}
+function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">USD ${Number(c.price).toLocaleString()}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
 function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
 function renderResults(list){
   resultsGrid.innerHTML=list.length?list.map(c=>{
