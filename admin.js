@@ -460,8 +460,24 @@ async function markOrder(id,status){if(!isOwner()||!sb())return;const {error}=aw
 function subscribePurchaseOrders(){if(!isOwner()||!sb()||window.driveOrdersRealtime)return;window.driveOrdersRealtime=sb().channel('drive-purchase-orders-live').on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},()=>{loadPurchaseOrders();try{if(document.visibilityState==='visible'&&'Notification' in window&&Notification.permission==='granted')new Notification('DRIVE — novo pedido de compra');}catch(e){}}).subscribe();}
 
 
-async function loadPromotions(){if(!isOwner()||!sb())return;const box=$("promotionsList");if(!box)return;const {data,error}=await sb().from("drive_promotions").select("*").order("created_at",{ascending:false});if(error){box.innerHTML='<p>Não foi possível carregar promoções.</p>';return;}box.innerHTML=(data||[]).map(p=>`<div class="admin-item"><div><b>🔥 ${esc(p.title)}</b><small>${esc(p.subtitle||'')} · ${p.discount||0}% · ${p.active?'ATIVA':'INATIVA'}</small></div><div class="item-actions"><button class="secondary" onclick="togglePromotion('${p.id}',${!p.active})">${p.active?'Desativar':'Ativar'}</button><button class="danger" onclick="deletePromotion('${p.id}')">Eliminar</button></div></div>`).join('')||'<p>Nenhuma promoção criada.</p>';}
+async function loadPromotions(){
+  if(!isOwner()||!sb())return;
+  const box=$("promotionsList"); if(!box)return;
+  const {data,error}=await sb().from("drive_promotions").select("*").order("created_at",{ascending:false});
+  if(error){box.innerHTML='<p>Não foi possível carregar promoções.</p>';return;}
+  box.innerHTML=(data||[]).map(p=>{
+    const period=`${p.starts_at?new Date(p.starts_at).toLocaleString("pt-MZ"):""}${p.ends_at?` → ${new Date(p.ends_at).toLocaleString("pt-MZ")}`:""}`;
+    return `<div class="admin-item"><div><b>🔥 ${esc(p.title)}</b><small>${esc(p.subtitle||"")} · ${p.discount||0}% · ${p.active?"ATIVA":"INATIVA"}</small><small>${p.old_price?`Antigo: ${esc(p.old_price)} USD · `:""}${p.promo_price?`Promo: ${esc(p.promo_price)} USD`:""}</small><small>${esc(period)}</small></div><div class="item-actions"><button class="secondary" onclick="togglePromotion('${p.id}',${!p.active})">${p.active?'Desativar':'Ativar'}</button><button class="danger" onclick="deletePromotion('${p.id}')">Eliminar</button></div></div>`
+  }).join('')||'<p>Nenhuma promoção criada.</p>';
+}
 async function togglePromotion(id,active){if(!isOwner())return;const {error}=await sb().from('drive_promotions').update({active}).eq('id',id);if(error)alert(error.message);else loadPromotions();}
 async function deletePromotion(id){if(!isOwner()||!confirm('Eliminar esta promoção?'))return;const {error}=await sb().from('drive_promotions').delete().eq('id',id);if(error)alert(error.message);else loadPromotions();}
-$("promotionForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!isOwner())return;const row={title:$('promoTitle').value.trim(),subtitle:$('promoSubtitle').value.trim(),image_url:$('promoImage').value.trim(),car_id:$('promoCarId').value.trim()||null,old_price:+$('promoOldPrice').value||null,promo_price:+$('promoPrice').value||null,discount:+$('promoDiscount').value||0,active:$('promoActive').checked,created_by:currentAdminUser.id};const {error}=await sb().from('drive_promotions').insert(row);if(error)alert(error.message);else{$('promotionForm').reset();$('promoActive').checked=true;loadPromotions();}});
+$("promotionForm")?.addEventListener("submit",async e=>{
+  e.preventDefault(); if(!isOwner())return;
+  const starts=$("promoStartsAt")?.value;
+  const ends=$("promoEndsAt")?.value;
+  const row={title:$("promoTitle").value.trim(),subtitle:$("promoSubtitle").value.trim(),image_url:$("promoImage").value.trim(),car_id:$("promoCarId").value.trim()||null,old_price:+$("promoOldPrice").value||null,promo_price:+$("promoPrice").value||null,discount:+$("promoDiscount").value||0,active:$("promoActive").checked,starts_at:starts?new Date(starts).toISOString():new Date().toISOString(),ends_at:ends?new Date(ends).toISOString():null,created_by:currentAdminUser.id};
+  const {error}=await sb().from('drive_promotions').insert(row);
+  if(error)alert(error.message);else{$("promotionForm").reset();$("promoActive").checked=true;loadPromotions();}
+});
 function subscribePromotions(){if(!isOwner()||!sb()||window.drivePromotionsRealtime)return;window.drivePromotionsRealtime=sb().channel('drive-promotions-live').on('postgres_changes',{event:'*',schema:'public',table:'drive_promotions'},()=>loadPromotions()).subscribe();}

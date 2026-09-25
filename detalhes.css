@@ -5,3 +5,11 @@ body{margin:0;font-family:Arial;color:#292c3d;background:#f7f7f7}header{height:7
 
 .detail-exchange{margin-top:6px;font-size:.86rem;opacity:.72}
 .buy-now{background:#111!important}.buy-now:hover{background:#e90016!important}
+
+/* BUY NOW em destaque, logo abaixo do desconto */
+.discount{margin:10px 0 14px;font-weight:800;color:#e90016;font-size:18px}
+.detail-buy-wrap{width:100%;margin:0 0 24px}
+.buy-now-large{display:flex!important;width:100%;box-sizing:border-box;min-height:64px;align-items:center;justify-content:center;text-align:center;font-size:23px!important;font-weight:900;letter-spacing:.4px;padding:18px 30px!important;border-radius:10px!important;box-shadow:0 4px 12px #0002}
+.buy-now-large i{margin-right:10px}
+.buy-now-large:hover{transform:translateY(-1px);box-shadow:0 6px 16px #0003}
+@media(max-width:600px){.buy-now-large{min-height:58px;font-size:21px!important;padding:16px 20px!important}}
