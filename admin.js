@@ -71,6 +71,10 @@ async function init(){
   await loadPermissions();
   await loadCarsFromBackend();
   subscribeCarsRealtime();
+  await loadPurchaseOrders();
+  subscribePurchaseOrders();
+  await loadPromotions();
+  subscribePromotions();
   renderUser(); draw(); await drawAdmins(); await drawInvites();
   if($("contactPhone")) $("contactPhone").value=localStorage.getItem(CONTACT_KEY)||"";
   applyPermissions();
@@ -202,7 +206,7 @@ $("carForm")?.addEventListener("submit",async e=>{
     let images=editingImages.slice();
     if(files.length) images=await uploadCarPhotos(files,baseId);
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
-    const base={stock:$("stock").value.trim(),brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),fuel:$("fuel").value,arrivalPort:$("arrivalPort").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),images,image:images[0]||"",published:$("published").checked};
+    const base={stock:$("stock").value.trim(),brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),fuel:$("fuel").value,arrivalPort:$("arrivalPort").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),color:$("color").value.trim(),location:$("location").value.trim(),seats:$("seats").value.trim(),doors:$("doors").value.trim(),dimensions:$("dimensions").value.trim(),images,image:images[0]||"",published:$("published").checked};
     let target;
     if(id){
       target=getCar(id);
@@ -223,7 +227,7 @@ $("carForm")?.addEventListener("submit",async e=>{
 function editCar(id){
   if(!has("edit"))return;
   const c=getCar(id);if(!c)return;
-  for(const k of ["stock","brand","model","body","price","year","km","discount","engine","fuel","arrivalPort","weight","trans","drive","wheel"])if($(k))$(k).value=c[k]??"";
+  for(const k of ["stock","brand","model","body","price","year","km","discount","engine","fuel","arrivalPort","weight","trans","drive","wheel","color","location","seats","doors","dimensions"])if($(k))$(k).value=c[k]??"";
   if($("published"))$("published").checked=c.published!==false;
   editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
   if($("carPhotos"))$("carPhotos").value="";
@@ -442,3 +446,22 @@ document.addEventListener("click", (event) => {
 
 window.addEventListener("driveExchangeUpdated",updateAdminPricePreview);
 window.addEventListener("driveCurrencyChanged",updateAdminPricePreview);
+
+
+async function loadPurchaseOrders(){
+  if(!isOwner()||!sb()) return;
+  const box=$("purchaseOrders"); if(!box) return;
+  const {data,error}=await sb().from("purchase_orders").select("*").order("created_at",{ascending:false}).limit(30);
+  if(error){box.innerHTML='<p>Não foi possível carregar os pedidos.</p>';return;}
+  const orders=data||[]; $("ordersBadge").textContent=orders.filter(o=>o.status==='pending').length?`(${orders.filter(o=>o.status==='pending').length} novos)`:'';
+  box.innerHTML=orders.map(o=>{const v=o.vehicle_snapshot||{};return `<div class="admin-item"><div><b>🛒 ${esc(v.brand||'')} ${esc(v.model||'')}</b><small>Cliente: ${esc(o.customer_name||'')} · ${esc(o.customer_phone||'')} · Stock: ${esc(v.stock||o.car_id||'')} · ${esc(v.price||'')} USD</small><small>Pagamento: ${esc(o.payment_method||'—')} · Envio: ${esc(o.shipping_method||'—')} · Destino: ${esc(o.destination||'—')}</small><small>${new Date(o.created_at).toLocaleString('pt-MZ')} · Estado: ${esc(o.status||'pending')}</small></div><div class="item-actions"><button class="secondary" onclick="markOrder('${o.id}','processing')">Em análise</button><button onclick="markOrder('${o.id}','confirmed')">Confirmar</button><button class="danger" onclick="markOrder('${o.id}','cancelled')">Cancelar</button></div></div>`}).join('')||'<p>Nenhum pedido de compra.</p>';
+}
+async function markOrder(id,status){if(!isOwner()||!sb())return;const {error}=await sb().from('purchase_orders').update({status}).eq('id',id);if(error)alert(error.message);else loadPurchaseOrders();}
+function subscribePurchaseOrders(){if(!isOwner()||!sb()||window.driveOrdersRealtime)return;window.driveOrdersRealtime=sb().channel('drive-purchase-orders-live').on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},()=>{loadPurchaseOrders();try{if(document.visibilityState==='visible'&&'Notification' in window&&Notification.permission==='granted')new Notification('DRIVE — novo pedido de compra');}catch(e){}}).subscribe();}
+
+
+async function loadPromotions(){if(!isOwner()||!sb())return;const box=$("promotionsList");if(!box)return;const {data,error}=await sb().from("drive_promotions").select("*").order("created_at",{ascending:false});if(error){box.innerHTML='<p>Não foi possível carregar promoções.</p>';return;}box.innerHTML=(data||[]).map(p=>`<div class="admin-item"><div><b>🔥 ${esc(p.title)}</b><small>${esc(p.subtitle||'')} · ${p.discount||0}% · ${p.active?'ATIVA':'INATIVA'}</small></div><div class="item-actions"><button class="secondary" onclick="togglePromotion('${p.id}',${!p.active})">${p.active?'Desativar':'Ativar'}</button><button class="danger" onclick="deletePromotion('${p.id}')">Eliminar</button></div></div>`).join('')||'<p>Nenhuma promoção criada.</p>';}
+async function togglePromotion(id,active){if(!isOwner())return;const {error}=await sb().from('drive_promotions').update({active}).eq('id',id);if(error)alert(error.message);else loadPromotions();}
+async function deletePromotion(id){if(!isOwner()||!confirm('Eliminar esta promoção?'))return;const {error}=await sb().from('drive_promotions').delete().eq('id',id);if(error)alert(error.message);else loadPromotions();}
+$("promotionForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!isOwner())return;const row={title:$('promoTitle').value.trim(),subtitle:$('promoSubtitle').value.trim(),image_url:$('promoImage').value.trim(),car_id:$('promoCarId').value.trim()||null,old_price:+$('promoOldPrice').value||null,promo_price:+$('promoPrice').value||null,discount:+$('promoDiscount').value||0,active:$('promoActive').checked,created_by:currentAdminUser.id};const {error}=await sb().from('drive_promotions').insert(row);if(error)alert(error.message);else{$('promotionForm').reset();$('promoActive').checked=true;loadPromotions();}});
+function subscribePromotions(){if(!isOwner()||!sb()||window.drivePromotionsRealtime)return;window.drivePromotionsRealtime=sb().channel('drive-promotions-live').on('postgres_changes',{event:'*',schema:'public',table:'drive_promotions'},()=>loadPromotions()).subscribe();}

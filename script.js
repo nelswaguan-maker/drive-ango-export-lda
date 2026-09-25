@@ -394,3 +394,16 @@ document.addEventListener("click", (event) => {
 
 window.addEventListener("driveCurrencyChanged",()=>{updatePriceFilterText();renderPopular();renderRecent();renderResults(filtered());});
 window.addEventListener("driveExchangeUpdated",()=>{updatePriceFilterText();renderRecent();renderResults(filtered());});
+
+async function loadPublicPromotions(){
+  if(!window.driveSupabase)return;
+  const box=document.getElementById('promoBanner'); if(!box)return;
+  const {data,error}=await window.driveSupabase.from('drive_promotions').select('*').eq('active',true).order('created_at',{ascending:false}).limit(6);
+  if(error||!data?.length)return;
+  const now=Date.now();
+  const promos=data.filter(p=>new Date(p.starts_at).getTime()<=now&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));
+  if(!promos.length)return;
+  box.innerHTML=promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="detalhes.html?id=${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('');
+}
+
+document.addEventListener("DOMContentLoaded",loadPublicPromotions);
