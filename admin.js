@@ -302,7 +302,9 @@ async function drawAdmins(){
   if(error){console.error(error);$("adminsList").innerHTML="<p>Não foi possível carregar os administradores.</p>";return;}
   $("adminsList").innerHTML=(data||[]).map(a=>{
     const owner=isOwnerEmail(a.email||"");
-    return `<div class="admin-item"><div><b>${esc(a.name||"Administrador")}</b><small>${esc(a.email||"")} · ${owner?"👑 Proprietário Principal":"🛡️ Administrador"}${a.blocked?" · BLOQUEADO":""}</small></div>
+    const isCurrent = a.id === currentAdminUser?.id;
+    const onlineBadge = isCurrent && !a.blocked ? `<span class="admin-online">ADM online 🟢</span>` : "";
+    return `<div class="admin-item"><div><b>${esc(a.name||"Administrador")}</b><small>${esc(a.email||"")} · ${owner?"👑 Proprietário Principal":"🛡️ Administrador"}${a.blocked?" · BLOQUEADO":""}</small>${onlineBadge}</div>
     ${owner?`<strong>CONTROLO TOTAL</strong>`:`<div class="item-actions"><button onclick="toggleBlock('${esc(a.id)}',${!a.blocked})">${a.blocked?"Desbloquear":"Bloquear"}</button><button class="danger" onclick="removeAdmin('${esc(a.id)}')">Remover</button></div>`}</div>`;
   }).join("")||"<p>Nenhum administrador.</p>";
 }

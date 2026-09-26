@@ -38,3 +38,8 @@
 .dark-mode .file-upload-label{background:#20242c;border-color:#48515e}.dark-mode .file-upload-label small{color:#b7bdc8}
 .dark-mode .admin-item{background:#1b1f27;border-color:#343842}.dark-mode .admin-item small{color:#b7bdc8}
 @media(max-width:700px){.settings-menu-grid,.settings-theme-grid{grid-template-columns:1fr}.admin-head-actions{justify-content:flex-end}}
+
+
+/* Status do administrador: visível somente dentro do painel Admin */
+.admin-online{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-size:.78rem;font-weight:700;line-height:1.2;padding:4px 8px;border-radius:999px;background:rgba(34,197,94,.12);color:#15803d;border:1px solid rgba(34,197,94,.28)}
+body.dark .admin-online{color:#86efac;background:rgba(34,197,94,.14);border-color:rgba(134,239,172,.25)}
