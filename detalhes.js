@@ -1,4 +1,5 @@
-const id=new URLSearchParams(location.search).get("id");
+const detailParams=new URLSearchParams(location.search);
+const id=detailParams.get("id") || ((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1] ? decodeURIComponent((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1]) : null);
 let cars=[];
 let car=null;
 let currentImageIndex=Math.max(0,Number(new URLSearchParams(location.search).get("imagem")||0)||0);
@@ -76,3 +77,24 @@ setInterval(()=>{if(car.status==="reserved"){const el=document.querySelector(".d
 
 window.addEventListener("driveCurrencyChanged",()=>{if(car)render();});
 window.addEventListener("driveExchangeUpdated",()=>{if(car)render();});
+
+
+/* ===== TEMA GLOBAL NA PÁGINA DE DETALHES ===== */
+const DETAIL_THEME_KEY="driveTheme";
+function applyDetailTheme(){
+  const theme=localStorage.getItem(DETAIL_THEME_KEY)||"system";
+  const dark=theme==="dark" || (theme==="system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme=theme;
+  document.body.classList.toggle("dark-mode",dark);
+  document.querySelectorAll("[data-detail-theme]").forEach(b=>b.classList.toggle("selected",b.dataset.detailTheme===theme));
+}
+function setDetailTheme(theme){localStorage.setItem(DETAIL_THEME_KEY,theme);applyDetailTheme();}
+function openDetailSettings(){const m=document.getElementById("detailSettingsModal");if(m){m.style.display="flex";m.setAttribute("aria-hidden","false");applyDetailTheme();}}
+function closeDetailSettings(){const m=document.getElementById("detailSettingsModal");if(m){m.style.display="none";m.setAttribute("aria-hidden","true");}}
+document.addEventListener("DOMContentLoaded",()=>{
+  applyDetailTheme();
+  document.getElementById("detailSettingsBtn")?.addEventListener("click",openDetailSettings);
+  document.querySelectorAll("[data-detail-theme]").forEach(b=>b.addEventListener("click",()=>setDetailTheme(b.dataset.detailTheme)));
+  document.getElementById("detailSettingsModal")?.addEventListener("click",e=>{if(e.target.id==="detailSettingsModal")closeDetailSettings();});
+});
+window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((localStorage.getItem(DETAIL_THEME_KEY)||"system")==="system")applyDetailTheme();});

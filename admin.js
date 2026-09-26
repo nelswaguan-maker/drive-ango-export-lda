@@ -121,7 +121,7 @@ function renderUser(){
 function applyPermissions(){
   const u=currentAdminUser;if(!u)return;
   $("staffSection")?.classList.toggle("hidden",!isOwner());
-  $("settingsSection")?.classList.toggle("hidden",!isOwner());
+  $("settingsSection")?.classList.toggle("hidden",true); $("adminSettingsBtn")?.classList.toggle("hidden",!isOwner());
   if(!has("publish")) $("carForm")?.classList.add("hidden");
 }
 
@@ -460,6 +460,28 @@ async function markOrder(id,status){if(!isOwner()||!sb())return;const {error}=aw
 function subscribePurchaseOrders(){if(!isOwner()||!sb()||window.driveOrdersRealtime)return;window.driveOrdersRealtime=sb().channel('drive-purchase-orders-live').on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},()=>{loadPurchaseOrders();try{if(document.visibilityState==='visible'&&'Notification' in window&&Notification.permission==='granted')new Notification('DRIVE — novo pedido de compra');}catch(e){}}).subscribe();}
 
 
+
+/* ===== PROMOÇÕES — UPLOAD DIRETO DE IMAGEM ===== */
+async function uploadPromotionImage(file){
+  if(!sb()) throw new Error("Supabase não configurado.");
+  if(!file) return "";
+  if(!file.type.startsWith("image/")) throw new Error("Escolhe um ficheiro de imagem.");
+  if(file.size>8*1024*1024) throw new Error("A imagem deve ter no máximo 8 MB.");
+  const bucket="car-images";
+  const ext=(file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+  const path=`promotions/${currentAdminUser.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const {error}=await sb().storage.from(bucket).upload(path,file,{upsert:false,contentType:file.type});
+  if(error) throw new Error("Erro ao enviar a imagem da promoção: "+error.message);
+  return sb().storage.from(bucket).getPublicUrl(path).data.publicUrl;
+}
+$("promoImageFile")?.addEventListener("change",e=>{
+  const file=e.target.files?.[0], box=$("promoImagePreview");
+  if(!box)return;
+  if(!file){box.innerHTML="";return;}
+  if(!file.type.startsWith("image/")||file.size>8*1024*1024){alert("Escolhe uma imagem até 8 MB.");e.target.value="";box.innerHTML="";return;}
+  box.innerHTML=`<div class="photo-thumb"><img src="${URL.createObjectURL(file)}" alt="Pré-visualização da promoção"><span>Capa</span></div>`;
+});
+
 async function loadPromotions(){
   if(!isOwner()||!sb())return;
   const box=$("promotionsList"); if(!box)return;
@@ -476,8 +498,40 @@ $("promotionForm")?.addEventListener("submit",async e=>{
   e.preventDefault(); if(!isOwner())return;
   const starts=$("promoStartsAt")?.value;
   const ends=$("promoEndsAt")?.value;
-  const row={title:$("promoTitle").value.trim(),subtitle:$("promoSubtitle").value.trim(),image_url:$("promoImage").value.trim(),car_id:$("promoCarId").value.trim()||null,old_price:+$("promoOldPrice").value||null,promo_price:+$("promoPrice").value||null,discount:+$("promoDiscount").value||0,active:$("promoActive").checked,starts_at:starts?new Date(starts).toISOString():new Date().toISOString(),ends_at:ends?new Date(ends).toISOString():null,created_by:currentAdminUser.id};
+  let imageUrl="";
+  try{imageUrl=await uploadPromotionImage($("promoImageFile")?.files?.[0]||null);}catch(err){alert(err.message);return;}
+  const row={title:$("promoTitle").value.trim(),subtitle:$("promoSubtitle").value.trim(),image_url:imageUrl||null,car_id:$("promoCarId").value.trim()||null,old_price:+$("promoOldPrice").value||null,promo_price:+$("promoPrice").value||null,discount:+$("promoDiscount").value||0,active:$("promoActive").checked,starts_at:starts?new Date(starts).toISOString():new Date().toISOString(),ends_at:ends?new Date(ends).toISOString():null,created_by:currentAdminUser.id};
   const {error}=await sb().from('drive_promotions').insert(row);
   if(error)alert(error.message);else{$("promotionForm").reset();$("promoActive").checked=true;loadPromotions();}
 });
 function subscribePromotions(){if(!isOwner()||!sb()||window.drivePromotionsRealtime)return;window.drivePromotionsRealtime=sb().channel('drive-promotions-live').on('postgres_changes',{event:'*',schema:'public',table:'drive_promotions'},()=>loadPromotions()).subscribe();}
+
+/* ===== DEFINIÇÕES DO PAINEL ===== */
+const ADMIN_THEME_KEY="driveTheme";
+function applyAdminTheme(){
+  const theme=localStorage.getItem(ADMIN_THEME_KEY)||"system";
+  const dark=theme==="dark" || (theme==="system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.dataset.theme=theme;
+  document.body.classList.toggle("dark-mode",dark);
+}
+function setAdminTheme(theme){localStorage.setItem(ADMIN_THEME_KEY,theme);applyAdminTheme();openAdminSettingsTab("theme");}
+function toggleAdminSettings(){
+  const s=$("settingsSection"); if(!s||!isOwner())return;
+  s.classList.toggle("hidden");
+  if(!s.classList.contains("hidden"))openAdminSettingsTab("theme");
+  s.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openAdminSettingsTab(tab){
+  const box=$("adminSettingsContent"); if(!box)return;
+  const theme=localStorage.getItem(ADMIN_THEME_KEY)||"system";
+  if(tab==="contact"){
+    box.innerHTML=`<div class="settings-tab"><h3>📱 Contacto e WhatsApp</h3><p>Este número será usado nos botões WhatsApp e Ligar.</p><form id="contactForm"><input id="contactPhone" placeholder="Número com indicativo, ex.: +258 84..." required value="${esc(localStorage.getItem(CONTACT_KEY)||"")}"><button type="submit">Guardar contacto</button></form></div>`;
+    $("contactForm")?.addEventListener("submit",e=>{e.preventDefault();localStorage.setItem(CONTACT_KEY,$("contactPhone").value.trim());alert("Contacto guardado.");});
+  }else if(tab==="site"){
+    box.innerHTML=`<div class="settings-tab"><h3>🌐 Site e partilha</h3><p>Os links dos anúncios usam o formato público <strong>/carro/STOCK</strong>, sem expor <strong>detalhes.html</strong>.</p><p>Exemplo: <code>/carro/DRV1790408224947</code></p></div>`;
+  }else{
+    box.innerHTML=`<div class="settings-tab"><h3>🎨 Aparência e tema</h3><div class="settings-theme-grid"><button onclick="setAdminTheme('light')" class="${theme==="light"?"selected":""}">☀️ Claro</button><button onclick="setAdminTheme('dark')" class="${theme==="dark"?"selected":""}">🌙 Noturno</button><button onclick="setAdminTheme('system')" class="${theme==="system"?"selected":""}">💻 Sistema</button></div><small>A preferência fica guardada neste dispositivo.</small></div>`;
+  }
+}
+applyAdminTheme();
+window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((localStorage.getItem(ADMIN_THEME_KEY)||"system")==="system")applyAdminTheme();});

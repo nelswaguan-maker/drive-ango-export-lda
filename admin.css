@@ -19,3 +19,22 @@
 .panel-copyright{text-align:center;padding:22px 15px;font-size:13px;color:#777;border-top:1px solid #e5e5e5;margin-top:35px}
 .dark-mode .panel-copyright{color:#aaa;border-color:#343842}
 .footer-sbt-notice{display:flex;align-items:flex-start;gap:10px;max-width:900px;margin:18px auto 8px;padding:13px 15px;border:1px solid #f0c36d;border-left:5px solid #e90016;border-radius:9px;background:#fff8df;color:#292c3d;text-align:left}.footer-sbt-notice strong{display:block;margin-bottom:4px}.footer-sbt-notice p{margin:0;font-size:12px;line-height:1.5;color:#5f594a}.footer-copyright{text-align:center;padding:10px;font-size:13px;color:#777}
+
+.admin-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.file-upload-label{display:flex;flex-direction:column;gap:7px;padding:12px;border:1px dashed #bbb;border-radius:8px;background:#fafafa;margin:8px 0}
+.file-upload-label input{margin-top:4px}
+.file-upload-label small{color:#777}
+.admin-settings-menu{scroll-margin-top:20px}
+.settings-menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:15px 0}
+.settings-menu-grid button{padding:14px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer;text-align:left;font-weight:700}
+.settings-tab{margin-top:15px;padding:16px;border:1px solid #ddd;border-radius:10px;background:#fafafa}
+.settings-tab h3{margin-top:0}
+.settings-theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.settings-theme-grid button{padding:12px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer}
+.settings-theme-grid button.selected{border-color:#e90016;box-shadow:0 0 0 2px #e9001622}
+.dark-mode{background:#12141a;color:#eee}
+.dark-mode .admin-header,.dark-mode .panel-card,.dark-mode .dashboard{background:#1b1f27;color:#eee;border-color:#343842}
+.dark-mode input,.dark-mode select,.dark-mode textarea,.dark-mode .settings-menu-grid button,.dark-mode .settings-tab,.dark-mode .settings-theme-grid button{background:#242933;color:#eee;border-color:#3b424e}
+.dark-mode .file-upload-label{background:#20242c;border-color:#48515e}.dark-mode .file-upload-label small{color:#b7bdc8}
+.dark-mode .admin-item{background:#1b1f27;border-color:#343842}.dark-mode .admin-item small{color:#b7bdc8}
+@media(max-width:700px){.settings-menu-grid,.settings-theme-grid{grid-template-columns:1fr}.admin-head-actions{justify-content:flex-end}}
