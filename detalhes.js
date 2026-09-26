@@ -1,7 +1,7 @@
 const id=new URLSearchParams(location.search).get("id");
 let cars=[];
 let car=null;
-let currentImageIndex=0;
+let currentImageIndex=Math.max(0,Number(new URLSearchParams(location.search).get("imagem")||0)||0);
 const contact=localStorage.getItem("driveContact")||"";
 const phone=contact.replace(/\D/g,"");
 function status(){if(car.status==="sold")return '<span class="detail-status sold">VENDIDO</span>';if(car.status==="reserved")return `<span class="detail-status reserved">RESERVADO — ${countdown(car.reservedUntil)}</span>`;return '<span class="detail-status available">DISPONÍVEL</span>';}
@@ -22,14 +22,19 @@ function selectCarImage(index){currentImageIndex=index;renderImage();}
 
 async function shareImage(index=currentImageIndex){
   const imgs=gallery().map(safeImageUrl).filter(Boolean);
-  const url=imgs[index];
-  if(!url)return;
-  const title=`${car?.brand||"DRIVE"} ${car?.model||""} — Foto ${index+1}`.trim();
+  if(!imgs.length || !car?.id)return;
+  index=Math.max(0,Math.min(Number(index)||0,imgs.length-1));
+  const shareUrl=new URL("detalhes.html",window.location.href);
+  shareUrl.searchParams.set("id",car.id);
+  shareUrl.searchParams.set("imagem",index);
+  const url=shareUrl.href;
+  const title=`${car?.brand||"DRIVE"} ${car?.model||""}`.trim();
+  const text=`Confira este anúncio na DRIVE: ${title} — Stock ${car?.stock||car?.id||""}`.trim();
   try{
-    if(navigator.share){ await navigator.share({title,text:`${title} — imagem`,url}); }
-    else if(navigator.clipboard){ await navigator.clipboard.writeText(url); alert("Link da imagem copiado."); }
-    else { prompt("Link de partilha da imagem:",url); }
-  }catch(e){ if(e?.name!=="AbortError") console.warn("Partilha da imagem:",e); }
+    if(navigator.share){ await navigator.share({title,text,url}); }
+    else if(navigator.clipboard){ await navigator.clipboard.writeText(url); alert("Link do anúncio copiado. Ao abrir, a pessoa será levada aos detalhes deste carro."); }
+    else { prompt("Link de partilha do anúncio:",url); }
+  }catch(e){ if(e?.name!=="AbortError") console.warn("Partilha do anúncio:",e); }
 }
 
 function previousCarImage(){const imgs=gallery();if(imgs.length>1){currentImageIndex=(currentImageIndex-1+imgs.length)%imgs.length;renderImage();}}
