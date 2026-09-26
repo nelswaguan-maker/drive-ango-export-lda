@@ -49,9 +49,23 @@ function subscribePublicCars(){
     const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
     if(error)return;
     cars=data;localStorage.setItem(KEY,JSON.stringify(cars));
-    const added=cars.filter(c=>!previousIds.has(String(c.id)));
-    added.forEach(c=>addNotification("Novo carro publicado",`${c.brand||''} ${c.model||''} está agora disponível.`,"car",`car:${c.id}`));
-    renderBrands();renderBodies();renderPopular();renderRecent();renderResults(filtered());updateFavCount();
+    const added=cars.filter(c=>!previousIds.has(String(c.id)) && c.published!==false);
+    added.forEach(c=>{
+      addNotification(
+        "Novo carro publicado",
+        `${c.brand||''} ${c.model||''} está agora disponível.`,
+        "car",
+        `car:${c.id}`
+      );
+    });
+    if(added.length && document.getElementById("notificationsModal")?.style.display==="block") renderNotifications();
+    renderBrands();renderBodies();renderPopular();renderRecent();
+    // A página inicial mostra modelos agrupados; a grelha completa só aparece
+    // quando o visitante pesquisa/filtra ou escolhe um modelo.
+    if(!document.getElementById("results")?.classList.contains("hidden-home-results")){
+      renderResults(filtered());
+    }
+    updateFavCount();
   });
 }
 
@@ -117,7 +131,12 @@ function renderResults(list){
   updateCountdowns();
 }
 function applyFilters(){document.getElementById("results")?.classList.remove("hidden-home-results");renderResults(filtered());results.scrollIntoView({behavior:"smooth"});}
-function clearFilters(){filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);if(document.getElementById("quickSearch"))quickSearch.value="";renderResults(cars);}
+function clearFilters(){
+  filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
+  document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);
+  if(document.getElementById("quickSearch"))quickSearch.value="";
+  document.getElementById("results")?.classList.add("hidden-home-results");
+}
 function setBrand(b){filter.brand=b;brandText.textContent=b;applyFilters()}
 function setBody(b){filter.body=b;bodyText.textContent=b;applyFilters()}
 function setPrice(a,b){filter.minPrice=a;filter.maxPrice=b;updatePriceFilterText(a,b);applyFilters()}
@@ -179,6 +198,28 @@ function renderNotifications(){
 }
 function readNotification(id){const list=getNotifications().map(n=>String(n.id)===String(id)?{...n,read:true}:n);saveNotifications(list);renderNotifications();}
 function clearNotifications(){saveNotifications(getNotifications().map(n=>({...n,read:true})));renderNotifications();}
+
+async function loadGlobalNotifications(){
+  if(!window.driveSupabase)return;
+  const {data,error}=await window.driveSupabase.from("drive_notifications")
+    .select("id,type,title,message,car_id,created_at")
+    .order("created_at",{ascending:false}).limit(30);
+  if(error||!Array.isArray(data))return;
+  data.slice().reverse().forEach(n=>{
+    addNotification(n.title,n.message,n.type||"car",`global:${n.id}`);
+  });
+  updateNotificationCount();
+}
+function subscribeGlobalNotifications(){
+  if(!window.driveSupabase||window.driveGlobalNotificationsRealtime)return;
+  window.driveGlobalNotificationsRealtime=window.driveSupabase.channel("drive-notifications-live")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"drive_notifications"},payload=>{
+      const n=payload.new;
+      if(!n)return;
+      addNotification(n.title,n.message,n.type||"car",`global:${n.id}`);
+      if(document.getElementById("notificationsModal")?.style.display==="block")renderNotifications();
+    }).subscribe();
+}
 
 let brandsExpanded=false;
 function showMore(type){
@@ -435,6 +476,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
   applySavedTheme();updateNotificationCount();
   await loadPublicCars();
   subscribePublicCars();
+  await loadGlobalNotifications();
+  subscribeGlobalNotifications();
   renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();

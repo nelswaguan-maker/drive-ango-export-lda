@@ -305,6 +305,15 @@ $("carForm")?.addEventListener("submit",async e=>{
     const result=await window.driveCarsData.upsertCar(target,currentAdminUser.id);
     if(result.error) throw new Error("Não foi possível sincronizar o anúncio: "+result.error.message);
     await syncCarsFromBackend();
+    if(!id && target.published!==false && sb()){
+      const {error:noticeError}=await sb().from("drive_notifications").insert({
+        type:"car",
+        title:"Novo carro publicado",
+        message:`${target.brand||""} ${target.model||""} está agora disponível.`,
+        car_id:String(target.id)
+      });
+      if(noticeError) console.warn("Notificação global não enviada:",noticeError.message);
+    }
     resetCarForm();draw();alert(id?"Carro atualizado e sincronizado.":"Carro publicado e sincronizado com todos os dispositivos.");
   }catch(err){
     alert(err.message||"Não foi possível enviar as fotos.");
