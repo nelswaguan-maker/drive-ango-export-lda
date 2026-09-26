@@ -2,6 +2,7 @@
 let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
 let cars=[];
+let adminCarsExpanded=false;
 let editingImages=[];
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
@@ -144,7 +145,8 @@ function draw(){
       .then(()=>syncCarsFromBackend())
       .catch(err=>console.warn("Atualização automática da reserva:",err));
   }
-  $("list").innerHTML=cars.map(c=>{
+  const visibleCars=adminCarsExpanded?cars:cars.slice(0,2);
+  $("list").innerHTML=visibleCars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;
     return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · ${driveFormatMoney(c.price)} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
@@ -155,7 +157,13 @@ function draw(){
     ${has("manageStatus")&&c.status==="sold"?`<button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir carro</button>`:""}
     ${has("delete")?`<button class="danger" onclick="removeCar('${esc(c.id)}')">Eliminar</button>`:""}</div></div>`;
   }).join("")||"<p>Nenhum carro publicado.</p>";
+  const moreBtn=$("adminCarsMoreBtn");
+  if(moreBtn){
+    moreBtn.style.display=cars.length>2?"block":"none";
+    moreBtn.textContent=adminCarsExpanded?"Mostrar menos":"Ver mais";
+  }
 }
+function toggleAdminCarsMore(){adminCarsExpanded=!adminCarsExpanded;draw();}
 
 
 async function uploadCarPhotos(files, carId){
