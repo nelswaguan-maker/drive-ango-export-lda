@@ -2,7 +2,6 @@
 let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
 let cars=[];
-let adminCarsExpanded=false;
 let editingImages=[];
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
@@ -145,8 +144,7 @@ function draw(){
       .then(()=>syncCarsFromBackend())
       .catch(err=>console.warn("Atualização automática da reserva:",err));
   }
-  const visibleCars=adminCarsExpanded?cars:cars.slice(0,2);
-  $("list").innerHTML=visibleCars.map(c=>{
+  $("list").innerHTML=cars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;
     return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · ${driveFormatMoney(c.price)} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
@@ -157,19 +155,13 @@ function draw(){
     ${has("manageStatus")&&c.status==="sold"?`<button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir carro</button>`:""}
     ${has("delete")?`<button class="danger" onclick="removeCar('${esc(c.id)}')">Eliminar</button>`:""}</div></div>`;
   }).join("")||"<p>Nenhum carro publicado.</p>";
-  const moreBtn=$("adminCarsMoreBtn");
-  if(moreBtn){
-    moreBtn.style.display=cars.length>2?"block":"none";
-    moreBtn.textContent=adminCarsExpanded?"Mostrar menos":"Ver mais";
-  }
 }
-function toggleAdminCarsMore(){adminCarsExpanded=!adminCarsExpanded;draw();}
 
 
 async function uploadCarPhotos(files, carId){
   if(!sb()) throw new Error("Supabase não configurado.");
   if(!files.length) return [];
-  if(files.length>10) throw new Error("Podes escolher no máximo 10 fotos.");
+  if(files.length>20) throw new Error("Podes escolher no máximo 20 fotos.");
   const bucket="car-images";
   const uploaded=[];
   for(let i=0;i<files.length;i++){
@@ -186,33 +178,104 @@ async function uploadCarPhotos(files, carId){
   return uploaded;
 }
 
+let cropState={file:null,index:-1,image:null,scale:1,x:0,y:0,drag:false,lastX:0,lastY:0};
+let selectedPhotoFiles=[];
+let croppedPhotoFiles=new Map();
+
 function renderPhotoPreview(files){
   const box=$("photoPreview");
   if(!box)return;
-  const list=Array.from(files||[]).slice(0,10);
-  box.innerHTML=list.map((f,i)=>`<div class="photo-thumb"><img src="${URL.createObjectURL(f)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
+  selectedPhotoFiles=Array.from(files||[]).slice(0,20);
+  box.innerHTML=selectedPhotoFiles.map((f,i)=>{
+    const src=croppedPhotoFiles.get(i)?.preview || URL.createObjectURL(f);
+    return `<div class="photo-thumb photo-editable"><img src="${src}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span><button type="button" class="crop-photo-btn" onclick="openCropEditor(${i})">✂️ Recortar</button></div>`;
+  }).join("");
 }
 
 $("carPhotos")?.addEventListener("change",e=>{
   const files=Array.from(e.target.files||[]);
-  if(files.length>10){
-    alert("Podes escolher no máximo 10 fotos.");
+  croppedPhotoFiles.clear();
+  if(files.length>20){
+    alert("Podes escolher no máximo 20 fotos.");
     e.target.value="";
+    selectedPhotoFiles=[];
     renderPhotoPreview([]);
     return;
   }
   renderPhotoPreview(files);
 });
 
+function openCropEditor(index){
+  const file=selectedPhotoFiles[index];
+  if(!file)return;
+  const modal=$("cropModal"),canvas=$("cropCanvas");
+  if(!modal||!canvas)return;
+  const img=new Image();
+  img.onload=()=>{
+    cropState={file,index,image:img,scale:Math.max(1,Math.min(1.5,Math.max(420/img.width,280/img.height))),x:0,y:0,drag:false,lastX:0,lastY:0};
+    modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");
+    setupCropCanvas();drawCropCanvas();
+  };
+  img.src=URL.createObjectURL(file);
+}
+function setupCropCanvas(){
+  const c=$("cropCanvas"); if(!c)return;
+  const w=Math.min(760,window.innerWidth-48),h=Math.min(480,window.innerHeight-230);
+  c.width=Math.max(320,w);c.height=Math.max(240,h);
+}
+function drawCropCanvas(){
+  const c=$("cropCanvas"),ctx=c?.getContext("2d"),img=cropState.image;
+  if(!ctx||!img)return;
+  const cw=c.width,ch=c.height;ctx.clearRect(0,0,cw,ch);
+  const base=Math.max(cw/img.width,ch/img.height);
+  const scale=Math.max(base,cropState.scale);
+  const dw=img.width*scale,dh=img.height*scale;
+  const maxX=Math.max(0,(dw-cw)/2),maxY=Math.max(0,(dh-ch)/2);
+  cropState.x=Math.max(-maxX,Math.min(maxX,cropState.x));cropState.y=Math.max(-maxY,Math.min(maxY,cropState.y));
+  ctx.save();ctx.fillStyle="#111";ctx.fillRect(0,0,cw,ch);ctx.translate(cw/2+cropState.x,ch/2+cropState.y);ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
+  ctx.restore();
+  ctx.save();ctx.strokeStyle="#fff";ctx.lineWidth=2;ctx.setLineDash([7,6]);ctx.strokeRect(1,1,cw-2,ch-2);ctx.restore();
+}
+function closeCropEditor(){const m=$("cropModal");if(m){m.classList.add("hidden");m.setAttribute("aria-hidden","true");}}
+function applyCropEditor(){
+  const c=$("cropCanvas"),img=cropState.image,index=cropState.index,file=cropState.file;
+  if(!c||!img||index<0||!file)return;
+  const out=document.createElement("canvas"),ctx=out.getContext("2d");
+  const max=1600,ratio=c.width/c.height;
+  out.width=ratio>=1?max:Math.round(max*ratio);out.height=ratio>=1?Math.round(max/ratio):max;
+  const scale=Math.max(c.width/img.width,c.height/img.height,cropState.scale);
+  const dw=img.width*scale,dh=img.height*scale;
+  const sx=(dw-c.width)/2-cropState.x,sy=(dh-c.height)/2-cropState.y;
+  const sourceScale=1/scale;
+  ctx.drawImage(img,sx*sourceScale,sy*sourceScale,c.width*sourceScale,c.height*sourceScale,0,0,out.width,out.height);
+  out.toBlob(blob=>{
+    if(!blob)return;
+    const cropped=new File([blob],file.name.replace(/\.[^.]+$/i,"")+"-crop.jpg",{type:"image/jpeg",lastModified:Date.now()});
+    croppedPhotoFiles.set(index,{file:cropped,preview:URL.createObjectURL(blob)});
+    renderPhotoPreview(selectedPhotoFiles);closeCropEditor();
+  },"image/jpeg",0.9);
+}
+const cropCanvasEl=$("cropCanvas");
+if(cropCanvasEl){
+  cropCanvasEl.addEventListener("pointerdown",e=>{cropState.drag=true;cropState.lastX=e.clientX;cropState.lastY=e.clientY;cropCanvasEl.setPointerCapture?.(e.pointerId);});
+  cropCanvasEl.addEventListener("pointermove",e=>{if(!cropState.drag)return;cropState.x+=e.clientX-cropState.lastX;cropState.y+=e.clientY-cropState.lastY;cropState.lastX=e.clientX;cropState.lastY=e.clientY;drawCropCanvas();});
+  cropCanvasEl.addEventListener("pointerup",()=>cropState.drag=false);
+  cropCanvasEl.addEventListener("pointercancel",()=>cropState.drag=false);
+  cropCanvasEl.addEventListener("wheel",e=>{e.preventDefault();cropState.scale=Math.max(.5,Math.min(3,cropState.scale+(e.deltaY<0?.08:-.08)));drawCropCanvas();},{passive:false});
+}
+
 $("carForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!has("publish")&&!$("editId").value)return;
   const id=$("editId").value;
   const baseId=id||("DRV"+Date.now());
   const files=Array.from($("carPhotos")?.files||[]);
-  if(files.length>10){alert("Podes escolher no máximo 10 fotos.");return;}
+  if(files.length>20){alert("Podes escolher no máximo 20 fotos.");return;}
   try{
     let images=editingImages.slice();
-    if(files.length) images=await uploadCarPhotos(files,baseId);
+    if(files.length){
+      const prepared=files.map((f,i)=>croppedPhotoFiles.get(i)?.file||f);
+      images=await uploadCarPhotos(prepared,baseId);
+    }
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
     const base={stock:$("stock").value.trim(),brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),fuel:$("fuel").value,arrivalPort:$("arrivalPort").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),color:$("color").value.trim(),location:$("location").value.trim(),seats:$("seats").value.trim(),doors:$("doors").value.trim(),dimensions:$("dimensions").value.trim(),images,image:images[0]||"",published:$("published").checked};
     let target;
@@ -242,7 +305,7 @@ function editCar(id){
   if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
   $("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});
 }
-function resetCarForm(){editingImages=[];if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
+function resetCarForm(){editingImages=[];selectedPhotoFiles=[];croppedPhotoFiles.clear();if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
 async function togglePublished(id){
   if(!has("publish"))return;
   const c=getCar(id);if(!c)return;
