@@ -298,9 +298,10 @@ $("inviteForm")?.addEventListener("submit",async e=>{
 
 async function drawAdmins(){
   if(!$("adminsList")||!sb())return;
-  const {data,error}=await sb().from("profiles").select("id,name,email,role,blocked,created_at").eq("role","admin").order("created_at",{ascending:true});
+  const {data,error}=await sb().from("profiles").select("id,name,email,role,blocked,created_at").order("created_at",{ascending:true});
   if(error){console.error(error);$("adminsList").innerHTML="<p>Não foi possível carregar os administradores.</p>";return;}
-  $("adminsList").innerHTML=(data||[]).map(a=>{
+  const adminRows=(data||[]).filter(a=>isOwnerEmail(a.email||"") || String(a.role||"").toLowerCase()==="admin");
+  $("adminsList").innerHTML=adminRows.map(a=>{
     const owner=isOwnerEmail(a.email||"");
     const isCurrent = a.id === currentAdminUser?.id;
     const onlineBadge = isCurrent && !a.blocked ? `<span class="admin-online">ADM online 🟢</span>` : "";
