@@ -95,3 +95,6 @@ button{cursor:pointer}
 .modal-actions{display:flex;gap:10px;justify-content:center}
 .modal-actions button{min-width:145px}
 @media(max-width:500px){.modal-actions{flex-direction:column-reverse}.modal-actions button{width:100%}}
+
+.panel-copyright{text-align:center;padding:22px 15px;font-size:13px;color:#777;border-top:1px solid #e5e5e5;margin-top:35px}
+.dark-mode .panel-copyright{color:#aaa;border-color:#343842}

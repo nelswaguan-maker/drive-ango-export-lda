@@ -45,9 +45,12 @@ async function loadPublicCars(){
 function subscribePublicCars(){
   if(!window.driveCarsData || window.publicCarsRealtime) return;
   window.publicCarsRealtime=window.driveCarsData.subscribe(async()=>{
+    const previousIds=new Set(cars.map(c=>String(c.id)));
     const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
     if(error)return;
     cars=data;localStorage.setItem(KEY,JSON.stringify(cars));
+    const added=cars.filter(c=>!previousIds.has(String(c.id)));
+    added.forEach(c=>addNotification("Novo carro publicado",`${c.brand||''} ${c.model||''} está agora disponível.`,"car",`car:${c.id}`));
     renderBrands();renderBodies();renderPopular();renderRecent();renderResults(filtered());updateFavCount();
   });
 }
@@ -87,8 +90,7 @@ function renderResults(list){
     const disabled=reserved||sold;
     return `<article class="car-card ${reserved?'is-reserved':''} ${sold?'is-sold':''}">
       <div class="card-status">${statusHTML(c)}</div>
-      <button class="heart" onclick="toggleFav('${esc(c.id)}',this)"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button>
-      <a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a>
+      <div class="car-image-wrap"><a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><button type="button" class="heart image-heart" onclick="toggleFav('${esc(c.id)}',this)" aria-label="Adicionar aos favoritos"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button></div>
       <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${driveFormatMoney(c.price)}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
       <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
@@ -108,6 +110,56 @@ function setKm(a,b){filter.minKm=a;filter.maxKm=b;kmText.textContent=b===Infinit
 function openFilter(type){filterModal.style.display="block";const titles={brand:"Escolha marca e modelo",body:"Escolha a carroceria",price:"Escolha faixa de preço",year:"Escolha faixa de ano",km:"Escolha quilometragem"};modalTitle.textContent=titles[type];let html="";if(type==="brand")html=brands.map(x=>`<button class="option" onclick="setBrand('${x}');closeFilter()">${x}</button>`).join("");if(type==="body")html=bodies.map(x=>`<button class="option" onclick="setBody('${x}');closeFilter()">${x}</button>`).join("");if(type==="price")html=[[0,1000,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");if(type==="year")html=[[2018,2020],[2021,2022],[2023,2024],[2025,2026]].map(x=>`<button class="option" onclick="setYear(${x[0]},${x[1]});closeFilter()">${x[0]} - ${x[1]}</button>`).join("");if(type==="km")html=[[0,10000],[10001,30000],[30001,60000],[60001,Infinity]].map(x=>`<button class="option" onclick="setKm(${x[0]},${x[1]});closeFilter()">${x[1]===Infinity?'Acima de ':''}${x[0].toLocaleString()} km${x[1]!==Infinity?' - '+x[1].toLocaleString()+' km':''}</button>`).join("");modalContent.innerHTML=html;}
 function closeFilter(){filterModal.style.display="none"}
 function toggleMenu(){mobileMenu.style.display=mobileMenu.style.display==="block"?"none":"block"}
+
+/* ===== DEFINIÇÕES / TEMA / IDIOMA ===== */
+const THEME_KEY="driveTheme";
+const LANG_KEY="driveLanguage";
+function applySavedTheme(){
+  const theme=localStorage.getItem(THEME_KEY)||"system";
+  document.documentElement.dataset.theme=theme;
+  document.body.classList.toggle("dark-mode",theme==="dark" || (theme==="system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
+}
+function setTheme(theme){localStorage.setItem(THEME_KEY,theme);applySavedTheme();openSettingsSection("theme");}
+function setLanguage(lang){localStorage.setItem(LANG_KEY,lang);document.documentElement.lang=lang;openSettingsSection("language");}
+function openSettings(){
+  const m=document.getElementById("settingsModal");if(!m)return;
+  m.style.display="block";openSettingsSection("main");
+}
+function closeSettings(){const m=document.getElementById("settingsModal");if(m)m.style.display="none";}
+function openSettingsSection(section){
+  const box=document.getElementById("settingsSubpanel");if(!box)return;
+  const lang=localStorage.getItem(LANG_KEY)||"pt";
+  const theme=localStorage.getItem(THEME_KEY)||"system";
+  if(section==="language")box.innerHTML=`<div class="subpanel-title">Idioma</div><div class="settings-options"><button onclick="setLanguage('pt')" class="${lang==='pt'?'selected':''}">🇲🇿 Português</button><button onclick="setLanguage('en')" class="${lang==='en'?'selected':''}">🇬🇧 English</button></div><small>A preferência fica guardada neste dispositivo.</small>`;
+  else if(section==="theme")box.innerHTML=`<div class="subpanel-title">Tema</div><div class="settings-options"><button onclick="setTheme('light')" class="${theme==='light'?'selected':''}">☀️ Claro</button><button onclick="setTheme('dark')" class="${theme==='dark'?'selected':''}">🌙 Noturno</button><button onclick="setTheme('system')" class="${theme==='system'?'selected':''}">💻 Sistema</button></div>`;
+  else if(section==="about")box.innerHTML=`<div class="subpanel-title">Sobre nós</div><p>DRIVE — Global Car Market é uma plataforma para pesquisar, conhecer e solicitar veículos selecionados para exportação.</p><p class="copyright-inline">© Angó Global Cars 2026 LTD</p>`;
+  else box.innerHTML="";
+}
+window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((localStorage.getItem(THEME_KEY)||"system")==="system")applySavedTheme();});
+
+/* ===== NOTIFICAÇÕES ===== */
+const NOTIF_KEY="driveNotifications";
+function getNotifications(){try{return JSON.parse(localStorage.getItem(NOTIF_KEY)||"[]")}catch(_){return []}}
+function saveNotifications(list){localStorage.setItem(NOTIF_KEY,JSON.stringify(list.slice(0,30)));updateNotificationCount();}
+function addNotification(title,text,type="info",key=""){
+  const list=getNotifications();
+  if(key && list.some(n=>n.key===key))return;
+  list.unshift({id:Date.now()+Math.random(),title,text,type,key,read:false,createdAt:new Date().toISOString()});
+  saveNotifications(list);
+}
+function updateNotificationCount(){const el=document.getElementById("notificationCount");if(!el)return;const n=getNotifications().filter(x=>!x.read).length;el.textContent=n;el.style.display=n?"block":"none";}
+function openNotifications(){
+  const m=document.getElementById("notificationsModal");if(!m)return;m.style.display="block";renderNotifications();
+}
+function closeNotifications(){const m=document.getElementById("notificationsModal");if(m)m.style.display="none";}
+function renderNotifications(){
+  const box=document.getElementById("notificationsList");if(!box)return;
+  const list=getNotifications();
+  box.innerHTML=list.length?list.map(n=>`<button class="notification-item ${n.read?'read':''}" onclick="readNotification('${n.id}')"><span class="notification-icon ${esc(n.type)}"><i class="fa-${n.type==='promo'?'solid':'regular'} fa-${n.type==='promo'?'tag':'bell'}"></i></span><span><strong>${esc(n.title)}</strong><small>${esc(n.text)}</small><em>${new Date(n.createdAt).toLocaleString('pt-MZ')}</em></span></button>`).join(""):"<div class='empty-notifications'><i class='fa-regular fa-bell-slash'></i><p>Não tens notificações novas.</p></div>";
+}
+function readNotification(id){const list=getNotifications().map(n=>String(n.id)===String(id)?{...n,read:true}:n);saveNotifications(list);renderNotifications();}
+function clearNotifications(){saveNotifications(getNotifications().map(n=>({...n,read:true})));renderNotifications();}
+
 let brandsExpanded=false;
 function showMore(type){
   if(type!=="brands") return;
@@ -360,6 +412,7 @@ async function initClientModal(){
 
 
 document.addEventListener("DOMContentLoaded",async()=>{
+  applySavedTheme();updateNotificationCount();
   await loadPublicCars();
   subscribePublicCars();
   renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
@@ -403,6 +456,7 @@ async function loadPublicPromotions(){
   const now=Date.now();
   const promos=data.filter(p=>new Date(p.starts_at).getTime()<=now&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));
   if(!promos.length)return;
+  promos.forEach(p=>addNotification('Nova promoção',p.title||'Há uma nova oferta disponível.','promo',`promo:${p.id}`));
   box.innerHTML=promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="detalhes.html?id=${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('');
 }
 

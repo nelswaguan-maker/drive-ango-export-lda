@@ -14,6 +14,7 @@
   <nav class="top-actions">
     <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Conecte-se</span></a>
     <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span><b id="favCount">0</b></a>
+    <button class="notification-btn" type="button" onclick="openNotifications()" aria-label="Notificações"><i class="fa-regular fa-bell"></i><span>Notificações</span><b id="notificationCount" style="display:none">0</b></button>
     <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
   </nav>
 </header>
@@ -21,6 +22,7 @@
 <div id="mobileMenu" class="mobile-menu">
   <a href="#marcas">Marcas</a><a href="#precos">Preços</a><a href="#carrocerias">Carrocerias</a>
   <a href="#modelos">Modelos mais vistos</a><a href="favoritos.html">Favoritos</a>
+  <button class="menu-setting-btn" type="button" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Definições</button>
   <a href="admin.html" data-admin-only class="admin-only" style="display:none">Administração</a>
 </div>
 
@@ -128,6 +130,32 @@
 </section>
 </main>
 
+
+<div id="notificationsModal" class="modal">
+  <div class="modal-box notifications-box">
+    <button class="close" onclick="closeNotifications()">×</button>
+    <h2><i class="fa-regular fa-bell"></i> Notificações</h2>
+    <div id="notificationsList" class="notifications-list"></div>
+    <button class="clear-notifications" type="button" onclick="clearNotifications()">Marcar todas como lidas</button>
+  </div>
+</div>
+
+<div id="settingsModal" class="modal">
+  <div class="modal-box settings-box">
+    <button class="close" onclick="closeSettings()">×</button>
+    <h2><i class="fa-solid fa-gear"></i> Definições</h2>
+    <div class="settings-list">
+      <button class="settings-item" type="button" onclick="openSettingsSection('language')"><i class="fa-solid fa-language"></i><span><strong>Idioma</strong><small>Português / English</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="settings-item" type="button" onclick="location.href='perfil.html'"><i class="fa-regular fa-user"></i><span><strong>Perfil</strong><small>Gerir a tua conta</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="settings-item" type="button" onclick="openSettingsSection('theme')"><i class="fa-solid fa-palette"></i><span><strong>Tema</strong><small>Claro / Noturno / Sistema</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="settings-item" type="button" onclick="openNotifications();closeSettings()"><i class="fa-regular fa-bell"></i><span><strong>Notificações</strong><small>Ver alertas e novidades</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="settings-item" type="button" onclick="openSettingsSection('about')"><i class="fa-solid fa-circle-info"></i><span><strong>Sobre nós</strong><small>DRIVE — Global Car Market</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <a class="settings-item" href="politica-privacidade.html"><i class="fa-solid fa-shield-halved"></i><span><strong>Privacidade</strong><small>Política de Privacidade</small></span><i class="fa-solid fa-chevron-right"></i></a>
+      <a class="settings-item" href="termos.html"><i class="fa-solid fa-file-contract"></i><span><strong>Termos e condições</strong><small>Regras de utilização</small></span><i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+    <div id="settingsSubpanel" class="settings-subpanel"></div>
+  </div>
+</div>
 
 <div id="clientModal" class="modal">
   <div class="modal-box client-box">
