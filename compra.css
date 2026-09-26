@@ -4,3 +4,4 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f6f7f9;color:#2
 
 .panel-copyright{text-align:center;padding:22px 15px;font-size:13px;color:#777;border-top:1px solid #e5e5e5;margin-top:35px}
 .dark-mode .panel-copyright{color:#aaa;border-color:#343842}
+.footer-sbt-notice{display:flex;align-items:flex-start;gap:10px;max-width:900px;margin:18px auto 8px;padding:13px 15px;border:1px solid #f0c36d;border-left:5px solid #e90016;border-radius:9px;background:#fff8df;color:#292c3d;text-align:left}.footer-sbt-notice strong{display:block;margin-bottom:4px}.footer-sbt-notice p{margin:0;font-size:12px;line-height:1.5;color:#5f594a}.footer-copyright{text-align:center;padding:10px;font-size:13px;color:#777}

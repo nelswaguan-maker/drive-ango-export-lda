@@ -65,6 +65,33 @@
   </div>
 </div>
 
+<section id="avisos" class="notices-section content-section">
+  <div class="notices-heading"><span><i class="fa-solid fa-triangle-exclamation"></i> Avisos importantes</span><small>Leia antes de fazer um pedido</small></div>
+  <div class="notice-grid">
+    <article class="notice-card notice-main">
+      <div class="notice-icon"><i class="fa-solid fa-circle-info"></i></div>
+      <div>
+        <h3>Não somos a SBT Japan</h3>
+        <p><strong>A DRIVE é uma facilitadora local independente.</strong> Usamos esta plataforma para apresentar veículos e receber pedidos de clientes. Quando recebermos um pedido, entraremos em contacto com a <strong>SBT Japan</strong> para tratar da consulta e verificar as condições do veículo.</p>
+      </div>
+    </article>
+    <article class="notice-card">
+      <div class="notice-icon"><i class="fa-solid fa-paper-plane"></i></div>
+      <div>
+        <h3>Como funciona o pedido?</h3>
+        <p>Escolha o veículo, envie o seu pedido e a nossa equipa local fará o contacto com a SBT Japan. Disponibilidade, preço, transporte e demais condições devem ser confirmados antes da compra.</p>
+      </div>
+    </article>
+    <article class="notice-card">
+      <div class="notice-icon"><i class="fa-solid fa-handshake"></i></div>
+      <div>
+        <h3>Atendimento local</h3>
+        <p>Estamos aqui para facilitar a comunicação e o acompanhamento do seu pedido localmente. <strong>O envio de um pedido não significa confirmação automática de compra.</strong></p>
+      </div>
+    </article>
+  </div>
+</section>
+
 <section id="promoBanner" class="banner-strip"><div class="promo">DRIVE <strong>PROMOÇÕES</strong><small>Ofertas especiais em veículos selecionados</small></div></section>
 
 <section id="marcas" class="content-section">
@@ -149,6 +176,7 @@
       <button class="settings-item" type="button" onclick="location.href='perfil.html'"><i class="fa-regular fa-user"></i><span><strong>Perfil</strong><small>Gerir a tua conta</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <button class="settings-item" type="button" onclick="openSettingsSection('theme')"><i class="fa-solid fa-palette"></i><span><strong>Tema</strong><small>Claro / Noturno / Sistema</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <button class="settings-item" type="button" onclick="openNotifications();closeSettings()"><i class="fa-regular fa-bell"></i><span><strong>Notificações</strong><small>Ver alertas e novidades</small></span><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="settings-item" type="button" onclick="document.getElementById('settingsModal').style.display='none';document.getElementById('avisos').scrollIntoView({behavior:'smooth'});"><i class="fa-solid fa-triangle-exclamation"></i><span><strong>Avisos importantes</strong><small>Informação sobre a SBT Japan e os pedidos</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <button class="settings-item" type="button" onclick="openSettingsSection('about')"><i class="fa-solid fa-circle-info"></i><span><strong>Sobre nós</strong><small>DRIVE — Global Car Market</small></span><i class="fa-solid fa-chevron-right"></i></button>
       <a class="settings-item" href="politica-privacidade.html"><i class="fa-solid fa-shield-halved"></i><span><strong>Privacidade</strong><small>Política de Privacidade</small></span><i class="fa-solid fa-chevron-right"></i></a>
       <a class="settings-item" href="termos.html"><i class="fa-solid fa-file-contract"></i><span><strong>Termos e condições</strong><small>Regras de utilização</small></span><i class="fa-solid fa-chevron-right"></i></a>
@@ -221,6 +249,8 @@
     <label>Escritório Global</label><select><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>
     <p>🌐 Português / <select data-drive-currency onchange="driveCurrency.set(this.value)" aria-label="Moeda"><option value="MT">MT (Metical)</option><option value="USD">USD (Dólar)</option></select>⌄</p><p data-drive-rate>A obter câmbio…</p><p>📍 MOZAMBIQUE⌄</p>
     <small><a href="termos.html">Termos de Uso</a><br><br><a href="politica-privacidade.html">Política de Privacidade</a></small>
+    <div class="footer-sbt-notice">⚠️<div><strong>Aviso importante</strong><p>A DRIVE não é a SBT Japan. Somos uma facilitadora local independente. Pode fazer um pedido através do nosso site e entraremos em contacto com a SBT Japan para tratar da consulta. Disponibilidade, preço e condições devem ser confirmados antes da compra.</p></div></div>
+    <div class="footer-copyright">© Angó Global Cars 2026 LTD</div>
   </div>
 </footer>
 <button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="fa-solid fa-arrow-up"></i></button>

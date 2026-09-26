@@ -20,3 +20,6 @@ body{margin:0;font-family:Arial;color:#292c3d;background:#f7f7f7}header{height:7
 .gallery-image-share:hover{transform:scale(1.03)}
 .gallery-thumb-wrap{position:relative;display:inline-block}
 .gallery-thumb-share{position:absolute;right:3px;bottom:3px;border:0;border-radius:999px;width:26px;height:26px;background:rgba(0,0,0,.7);color:#fff;cursor:pointer;font-size:12px;display:grid;place-items:center}
+
+.detail-notice{max-width:1000px;margin:0 auto 30px;padding:18px 20px;background:#fff3cd;border:1px solid #f0c36d;border-left:6px solid #e90016;border-radius:10px;color:#292c3d}.detail-notice h2{margin:0 0 8px;font-size:19px}.detail-notice h2 i{color:#e90016;margin-right:7px}.detail-notice p{margin:0;line-height:1.55;font-size:14px;color:#555}.detail-notice strong{color:#292c3d}@media(max-width:700px){.detail-notice{margin:0 12px 25px;padding:15px}.detail-notice h2{font-size:17px}}
+.footer-sbt-notice{display:flex;align-items:flex-start;gap:10px;max-width:900px;margin:18px auto 8px;padding:13px 15px;border:1px solid #f0c36d;border-left:5px solid #e90016;border-radius:9px;background:#fff8df;color:#292c3d;text-align:left}.footer-sbt-notice strong{display:block;margin-bottom:4px}.footer-sbt-notice p{margin:0;font-size:12px;line-height:1.5;color:#5f594a}.footer-copyright{text-align:center;padding:10px;font-size:13px;color:#777}
