@@ -84,3 +84,5 @@
 .footer-copyright{text-align:center;padding:13px 15px 4px;font-size:13px;color:#777}
 .dark-mode .footer-sbt-notice{background:#302a18;border-color:#66552b;color:#f4f4f4}.dark-mode .footer-sbt-notice p{color:#d8cda9}.dark-mode .footer-copyright{color:#aaa}
 @media(max-width:700px){.footer-sbt-notice{margin:16px 10px 8px;padding:12px;font-size:12px}.footer-sbt-notice p{font-size:11px}.footer-copyright{font-size:12px}}
+
+.popular-card{width:100%;border:0;background:#fff;text-align:left;cursor:pointer;padding:0;transition:transform .15s ease}.popular-card:hover{transform:translateY(-2px)}.popular-card>div{flex:1}.popular-open{display:block;margin-top:10px;color:#e90016;font-size:13px;font-weight:700}.popular-empty{text-align:center;border:1px dashed #ccc;border-radius:10px;padding:35px 20px;color:#777}.popular-empty i{font-size:32px;color:#bbb;margin-bottom:10px}.popular-empty p{margin:5px 0 7px;font-size:18px;color:#555}.popular-empty small{font-size:13px}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Opções do modelo — DRIVE</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="modelos.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+<header class="header">
+  <a class="logo" href="index.html"><span>DRIVE</span><small>GLOBAL CAR MARKET</small></a>
+  <nav class="top-actions">
+    <a href="index.html"><i class="fa-solid fa-house"></i><span>Início</span></a>
+    <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span></a>
+    <button class="menu-btn" type="button" onclick="history.back()"><i class="fa-solid fa-arrow-left"></i><span>Voltar</span></button>
+  </nav>
+</header>
+<main class="model-page">
+  <div class="model-breadcrumb"><a href="index.html">Início</a><i class="fa-solid fa-chevron-right"></i><span>Modelo</span></div>
+  <section class="model-page-head">
+    <div><span class="model-kicker">TODAS AS OPÇÕES</span><h1 id="modelTitle">Modelo</h1><p id="modelSubtitle">A carregar...</p></div>
+    <div class="model-count"><strong id="modelCount">0</strong><span>opções</span></div>
+  </section>
+  <section id="modelCarsGrid" class="model-cars-grid"></section>
+  <section id="modelEmpty" class="model-empty" style="display:none">
+    <i class="fa-solid fa-car-side"></i>
+    <h2>Nenhuma opção disponível</h2>
+    <p>Não encontramos veículos publicados para este modelo neste momento.</p>
+    <a href="index.html">Pesquisar outro modelo</a>
+  </section>
+</main>
+<footer><div class="footer-bottom"><div class="footer-copyright">© Angó Global Cars 2026 LTD</div></div></footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="cars-data.js"></script>
+<script src="currency.js"></script>
+<script src="modelos.js"></script>
+</body>
+</html>

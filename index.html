@@ -65,6 +65,11 @@
   </div>
 </div>
 
+<section id="modelos" class="content-section">
+  <h2 class="section-heading">Modelos mais vistos</h2>
+  <div id="popularModels" class="popular-list"></div>
+</section>
+
 <section id="avisos" class="notices-section content-section">
   <div class="notices-heading"><span><i class="fa-solid fa-triangle-exclamation"></i> Avisos importantes</span><small>Leia antes de fazer um pedido</small></div>
   <div class="notice-grid">
@@ -130,11 +135,6 @@
   <button class="show-more" onclick="showMore('body')">Mostrar mais <i class="fa-solid fa-chevron-down"></i></button>
 </section>
 
-<section id="modelos" class="content-section">
-  <h2 class="section-heading">Modelos mais vistos</h2>
-  <div id="popularModels" class="popular-list"></div>
-</section>
-
 <section class="content-section">
   <h2 class="section-heading">Tags populares</h2>
   <div class="tags">
@@ -146,12 +146,12 @@
   </div>
 </section>
 
-<section class="content-section">
+<section class="content-section" id="recentSection" style="display:none">
   <h2 class="section-heading">Visualizado recentemente</h2>
   <div id="recentCars" class="recent-list"></div>
 </section>
 
-<section id="results" class="results-section">
+<section id="results" class="results-section" style="display:none">
   <div class="results-head"><h2>Carros disponíveis</h2><button onclick="clearFilters()">Limpar filtros</button></div>
   <div id="resultsGrid" class="car-grid"></div>
 </section>
