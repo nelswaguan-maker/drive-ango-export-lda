@@ -19,6 +19,7 @@ let filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999
 const brands=["Toyota","Honda","Nissan","Mazda","Suzuki","Mitsubishi","Daihatsu","Subaru","Hino","Volkswagen"];
 const brandImgs=["https://cdn.simpleicons.org/toyota","https://cdn.simpleicons.org/honda","https://cdn.simpleicons.org/nissan","https://cdn.simpleicons.org/mazda","https://cdn.simpleicons.org/suzuki","https://cdn.simpleicons.org/mitsubishi","https://cdn.simpleicons.org/daihatsu","https://cdn.simpleicons.org/subaru","https://cdn.simpleicons.org/hino","https://cdn.simpleicons.org/volkswagen"];
 const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van"];
+let popularGroups=[];
 
 function loadCars(){
   let stored=JSON.parse(localStorage.getItem(KEY)||"null");
@@ -49,23 +50,9 @@ function subscribePublicCars(){
     const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
     if(error)return;
     cars=data;localStorage.setItem(KEY,JSON.stringify(cars));
-    const added=cars.filter(c=>!previousIds.has(String(c.id)) && c.published!==false);
-    added.forEach(c=>{
-      addNotification(
-        "Novo carro publicado",
-        `${c.brand||''} ${c.model||''} está agora disponível.`,
-        "car",
-        `car:${c.id}`
-      );
-    });
-    if(added.length && document.getElementById("notificationsModal")?.style.display==="block") renderNotifications();
-    renderBrands();renderBodies();renderPopular();renderRecent();
-    // A página inicial mostra modelos agrupados; a grelha completa só aparece
-    // quando o visitante pesquisa/filtra ou escolhe um modelo.
-    if(!document.getElementById("results")?.classList.contains("hidden-home-results")){
-      renderResults(filtered());
-    }
-    updateFavCount();
+    const added=cars.filter(c=>!previousIds.has(String(c.id)));
+    added.forEach(c=>addNotification("Novo carro publicado",`${c.brand||''} ${c.model||''} está agora disponível.`,"car",`car:${c.id}`));
+    renderBrands();renderBodies();renderPopular();renderRecent();renderResults(filtered());updateFavCount();
   });
 }
 
@@ -81,40 +68,31 @@ function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n
 
 function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="brand-card" onclick="setBrand('${b}')"><img src="${brandImgs[i]}" onerror="this.style.display='none'"><div>${b}<br><small>(${(72188-i*4300).toLocaleString("en-US")})</small></div></button>`).join("");}
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
-function getModelKey(brand,model){return `${String(brand||"").trim()}|${String(model||"").trim()}`.toLowerCase();}
-function openModel(brand,model){
-  filter={brand:String(brand||""),body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
-  if(document.getElementById("quickSearch")) quickSearch.value=`${brand} ${model}`;
-  const matches=cars.filter(c=>getModelKey(c.brand,c.model)===getModelKey(brand,model));
-  const section=document.getElementById("results");
-  section?.classList.remove("hidden-home-results");
-  if(section){const h=section.querySelector(".results-head h2");if(h)h.textContent=`${brand} ${model} — ${matches.length} opções`;}
-  renderResults(matches);
-  section?.scrollIntoView({behavior:"smooth"});
-}
-function showModelMore(brand,model){openModel(brand,model);}
 function renderPopular(){
   const grouped={};
   cars.forEach(c=>{
-    if(!c?.model || c.published===false) return;
-    const brand=String(c.brand||"").trim(), model=String(c.model||"").trim();
-    const key=getModelKey(brand,model);
-    if(!grouped[key]) grouped[key]={brand,model,views:0,cars:[]};
+    if(!c?.model) return;
+    const brand=String(c.brand||"").trim();
+    const model=String(c.model||"").trim();
+    const key=`${brand}|${model}`.toLowerCase();
+    if(!grouped[key]) grouped[key]={key,brand,model,views:0,count:0,car:c,cars:[]};
+    grouped[key].count++;
     grouped[key].views+=Number(c.views||0);
     grouped[key].cars.push(c);
+    if((c.image||"") && Number(c.views||0)>=Number(grouped[key].car?.views||0)) grouped[key].car=c;
   });
-  const popular=Object.values(grouped).sort((a,b)=>b.views-a.views).slice(0,5);
-  popularModels.innerHTML=popular.length?popular.map(x=>{
-    const preview=x.cars.slice(0,2);
-    return `<article class="popular-model-block">
-      <button class="popular-model-title" onclick="openModel('${esc(x.brand).replace(/'/g,"&#39;")}','${esc(x.model).replace(/'/g,"&#39;")}')">
-        <span>${esc(x.brand)} ${esc(x.model)}</span><b>(${Number(x.views).toLocaleString()})</b>
-      </button>
-      <div class="popular-model-cars">${preview.map(c=>`<a class="popular-mini-car" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image||"")}" alt="${esc(c.brand+' '+c.model)}"><span>${esc(c.model)}${c.stock?` · Stock ${esc(c.stock)}`:""}</span></a>`).join("")}</div>
-      <button class="model-more-btn" onclick="showModelMore('${esc(x.brand).replace(/'/g,"&#39;")}','${esc(x.model).replace(/'/g,"&#39;")}')">Ver mais <i class="fa-solid fa-chevron-down"></i></button>
-    </article>`;
-  }).join(""):`<p>Ainda não há modelos visualizados.</p>`;
+  popularGroups=Object.values(grouped).sort((a,b)=>b.views-a.views||b.count-a.count).slice(0,5);
+  popularModels.innerHTML=popularGroups.length?popularGroups.map((x,i)=>`<button type="button" class="popular-card" onclick="openPopularModel(${i})"><img src="${esc(x.car?.image||"")}" alt="${esc(x.brand+" "+x.model)}"><span><small>${esc(x.brand)}</small><strong>${esc(x.model)} <small>(${x.count})</small></strong><em>Escolher veículo <i class="fa-solid fa-chevron-right"></i></em></span></button>`).join(""):`<p>Ainda não há modelos disponíveis.</p>`;
 }
+function openPopularModel(index){
+  const group=popularGroups[index];
+  const modal=document.getElementById("popularModelModal"),content=document.getElementById("popularModelContent");
+  if(!group||!modal||!content)return;
+  const list=group.cars||[];
+  content.innerHTML=`<div class="popular-modal-head"><div><small>${esc(group.brand)}</small><h2>${esc(group.model)} <span>(${list.length})</span></h2><p>${list.length} veículo${list.length===1?"":"s"} disponível${list.length===1?"":"is"}</p></div></div><div class="popular-car-list">${list.map((c,i)=>`<article class="popular-car-row"><img src="${esc(c.image||"")}" alt="${esc(group.brand+" "+group.model)}"><div class="popular-car-info"><strong>${esc(group.brand)} ${esc(group.model)}</strong><small>Stock ${esc(c.stock||c.id)}</small><div>${esc(c.year||"—")} · ${esc(c.trans||"—")} · ${esc(c.fuel||"—")}</div><b>${driveFormatMoney(c.price)}</b></div><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes <i class="fa-solid fa-chevron-right"></i></a></article>`).join("")}</div>`;
+  modal.style.display="block";
+}
+function closePopularModel(){const m=document.getElementById("popularModelModal");if(m)m.style.display="none";}
 function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">${driveFormatMoney(c.price)}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
 function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
 function renderResults(list){
@@ -130,20 +108,15 @@ function renderResults(list){
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   updateCountdowns();
 }
-function applyFilters(){document.getElementById("results")?.classList.remove("hidden-home-results");renderResults(filtered());results.scrollIntoView({behavior:"smooth"});}
-function clearFilters(){
-  filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
-  document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);
-  if(document.getElementById("quickSearch"))quickSearch.value="";
-  document.getElementById("results")?.classList.add("hidden-home-results");
-}
+function applyFilters(){renderResults(filtered());results.scrollIntoView({behavior:"smooth"});}
+function clearFilters(){filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);if(document.getElementById("quickSearch"))quickSearch.value="";renderResults(cars);}
 function setBrand(b){filter.brand=b;brandText.textContent=b;applyFilters()}
 function setBody(b){filter.body=b;bodyText.textContent=b;applyFilters()}
 function setPrice(a,b){filter.minPrice=a;filter.maxPrice=b;updatePriceFilterText(a,b);applyFilters()}
 function updatePriceFilterText(a=filter.minPrice,b=filter.maxPrice){if(!priceText)return;const mt=driveCurrency.get()==="MT";const fmt=n=>mt&&driveCurrency.getRate()>0?`MT ${driveCurrency.convert(n).toLocaleString("pt-MZ",{maximumFractionDigits:0})}`:`${mt?"MT":"$"}${n.toLocaleString("en-US")}`;priceText.textContent=b>=9999999?`Acima de ${fmt(a)}`:`${fmt(a)} - ${fmt(b)}`;}
 function setDiscount(n){filter.discount=n;applyFilters()}
 function tagSearch(t){filter.search=t;if(document.getElementById("quickSearch"))quickSearch.value=t;applyFilters()}
-function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();document.getElementById("results")?.classList.remove("hidden-home-results");applyFilters()}
+function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();applyFilters()}
 function setYear(a,b){filter.minYear=a;filter.maxYear=b;yearText.textContent=`${a} - ${b}`;applyFilters()}
 function setKm(a,b){filter.minKm=a;filter.maxKm=b;kmText.textContent=b===Infinity?`Acima de ${a.toLocaleString()} km`:`${a.toLocaleString()} - ${b.toLocaleString()} km`;applyFilters()}
 function openFilter(type){filterModal.style.display="block";const titles={brand:"Escolha marca e modelo",body:"Escolha a carroceria",price:"Escolha faixa de preço",year:"Escolha faixa de ano",km:"Escolha quilometragem"};modalTitle.textContent=titles[type];let html="";if(type==="brand")html=brands.map(x=>`<button class="option" onclick="setBrand('${x}');closeFilter()">${x}</button>`).join("");if(type==="body")html=bodies.map(x=>`<button class="option" onclick="setBody('${x}');closeFilter()">${x}</button>`).join("");if(type==="price")html=[[0,1000,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");if(type==="year")html=[[2018,2020],[2021,2022],[2023,2024],[2025,2026]].map(x=>`<button class="option" onclick="setYear(${x[0]},${x[1]});closeFilter()">${x[0]} - ${x[1]}</button>`).join("");if(type==="km")html=[[0,10000],[10001,30000],[30001,60000],[60001,Infinity]].map(x=>`<button class="option" onclick="setKm(${x[0]},${x[1]});closeFilter()">${x[1]===Infinity?'Acima de ':''}${x[0].toLocaleString()} km${x[1]!==Infinity?' - '+x[1].toLocaleString()+' km':''}</button>`).join("");modalContent.innerHTML=html;}
@@ -198,28 +171,6 @@ function renderNotifications(){
 }
 function readNotification(id){const list=getNotifications().map(n=>String(n.id)===String(id)?{...n,read:true}:n);saveNotifications(list);renderNotifications();}
 function clearNotifications(){saveNotifications(getNotifications().map(n=>({...n,read:true})));renderNotifications();}
-
-async function loadGlobalNotifications(){
-  if(!window.driveSupabase)return;
-  const {data,error}=await window.driveSupabase.from("drive_notifications")
-    .select("id,type,title,message,car_id,created_at")
-    .order("created_at",{ascending:false}).limit(30);
-  if(error||!Array.isArray(data))return;
-  data.slice().reverse().forEach(n=>{
-    addNotification(n.title,n.message,n.type||"car",`global:${n.id}`);
-  });
-  updateNotificationCount();
-}
-function subscribeGlobalNotifications(){
-  if(!window.driveSupabase||window.driveGlobalNotificationsRealtime)return;
-  window.driveGlobalNotificationsRealtime=window.driveSupabase.channel("drive-notifications-live")
-    .on("postgres_changes",{event:"INSERT",schema:"public",table:"drive_notifications"},payload=>{
-      const n=payload.new;
-      if(!n)return;
-      addNotification(n.title,n.message,n.type||"car",`global:${n.id}`);
-      if(document.getElementById("notificationsModal")?.style.display==="block")renderNotifications();
-    }).subscribe();
-}
 
 let brandsExpanded=false;
 function showMore(type){
@@ -476,8 +427,6 @@ document.addEventListener("DOMContentLoaded",async()=>{
   applySavedTheme();updateNotificationCount();
   await loadPublicCars();
   subscribePublicCars();
-  await loadGlobalNotifications();
-  subscribeGlobalNotifications();
   renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();
