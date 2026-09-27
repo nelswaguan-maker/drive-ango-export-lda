@@ -14,7 +14,17 @@
     return `MT ${Number(v||0).toLocaleString('pt-MZ')}`;
   };
   function render(cars){
-    const matches=cars.filter(c=>c.published!==false && key(c.brand,c.model)===key(brand,model));
+    const wantedBrand=String(brand||'').trim().toLowerCase();
+    const wantedModel=String(model||'').trim().toLowerCase();
+    const matches=cars.filter(c=>{
+      if(c.published===false) return false;
+      const cb=String(c.brand||'').trim().toLowerCase();
+      const cm=String(c.model||'').trim().toLowerCase();
+      if(cb!==wantedBrand) return false;
+      // O modelo selecionado representa a família do modelo: aceita o nome exato
+      // e variantes como "Dyna Truck", "Dyna 150", etc., sem misturar outras marcas.
+      return cm===wantedModel || cm.startsWith(wantedModel+' ') || cm.startsWith(wantedModel+'-') || cm.startsWith(wantedModel+'/');
+    });
     const label=`${brand} ${model}`.trim();
     document.title=`${label} — DRIVE Global Car Market`;
     title.textContent=label || 'Modelo';
