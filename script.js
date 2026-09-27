@@ -121,10 +121,26 @@ function renderPopular(){
   }).join(""): `<p>Ainda não há modelos visualizados.</p>`;
 }
 function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">${driveFormatMoney(c.price)}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
-function filtered(){return cars.filter(c=>(!filter.brand||c.brand===filter.brand)&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));}
+function filtered(){
+  const list=cars.filter(c=>(!filter.brand||String(c.brand||"").trim().toLowerCase()===String(filter.brand||"").trim().toLowerCase())&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
+  return list.sort((a,b)=>{
+    const brandCmp=String(a.brand||"").trim().localeCompare(String(b.brand||"").trim(),"pt",{sensitivity:"base"});
+    if(brandCmp) return brandCmp;
+    const modelCmp=String(a.model||"").trim().localeCompare(String(b.model||"").trim(),"pt",{sensitivity:"base",numeric:true});
+    if(modelCmp) return modelCmp;
+    return String(a.id||"").localeCompare(String(b.id||""));
+  });
+}
 function renderResults(list,options={}){
   const limit=Number.isFinite(options.limit)?options.limit:5;
-  const visible=list.slice(0,limit);
+  const ordered=[...list].sort((a,b)=>{
+    const brandCmp=String(a.brand||"").trim().localeCompare(String(b.brand||"").trim(),"pt",{sensitivity:"base"});
+    if(brandCmp) return brandCmp;
+    const modelCmp=String(a.model||"").trim().localeCompare(String(b.model||"").trim(),"pt",{sensitivity:"base",numeric:true});
+    if(modelCmp) return modelCmp;
+    return String(a.id||"").localeCompare(String(b.id||""));
+  });
+  const visible=ordered.slice(0,limit);
   const modelView=!!options.modelView;
   resultsGrid.parentElement?.querySelectorAll(".results-more-btn").forEach(b=>b.remove());
   resultsGrid.innerHTML=list.length?visible.map(c=>{
@@ -143,7 +159,7 @@ function renderResults(list,options={}){
     resultsGrid.insertAdjacentHTML("afterend",`<button type="button" class="results-more-btn" onclick="showResultsLess()">Ver menos <i class="fa-solid fa-chevron-up"></i></button>`);
   }
   if(modelView) resultsGrid.classList.add("model-view-grid"); else resultsGrid.classList.remove("model-view-grid");
-  window.__currentResultsList=list;
+  window.__currentResultsList=ordered;
   window.__currentResultsModelView=modelView;
   updateCountdowns();
 }
@@ -202,7 +218,39 @@ function hideSearchSuggestions(){const box=document.getElementById("searchSugges
 function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();document.getElementById("results")?.classList.remove("hidden-home-results");applyFilters()}
 function setYear(a,b){filter.minYear=a;filter.maxYear=b;yearText.textContent=`${a} - ${b}`;applyFilters()}
 function setKm(a,b){filter.minKm=a;filter.maxKm=b;kmText.textContent=b===Infinity?`Acima de ${a.toLocaleString()} km`:`${a.toLocaleString()} - ${b.toLocaleString()} km`;applyFilters()}
-function openFilter(type){filterModal.style.display="block";const titles={brand:"Escolha marca e modelo",body:"Escolha a carroceria",price:"Escolha faixa de preço",year:"Escolha faixa de ano",km:"Escolha quilometragem"};modalTitle.textContent=titles[type];let html="";if(type==="brand")html=brands.map(x=>`<button class="option" onclick="setBrand('${x}');closeFilter()">${x}</button>`).join("");if(type==="body")html=bodies.map(x=>`<button class="option" onclick="setBody('${x}');closeFilter()">${x}</button>`).join("");if(type==="price")html=[[0,1000,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");if(type==="year")html=[[2018,2020],[2021,2022],[2023,2024],[2025,2026]].map(x=>`<button class="option" onclick="setYear(${x[0]},${x[1]});closeFilter()">${x[0]} - ${x[1]}</button>`).join("");if(type==="km")html=[[0,10000],[10001,30000],[30001,60000],[60001,Infinity]].map(x=>`<button class="option" onclick="setKm(${x[0]},${x[1]});closeFilter()">${x[1]===Infinity?'Acima de ':''}${x[0].toLocaleString()} km${x[1]!==Infinity?' - '+x[1].toLocaleString()+' km':''}</button>`).join("");modalContent.innerHTML=html;}
+function openFilter(type){
+  filterModal.style.display="block";
+  const titles={brand:"Escolha marca",body:"Escolha a carroceria",price:"Escolha faixa de preço",year:"Escolha faixa de ano",km:"Escolha quilometragem"};
+  modalTitle.textContent=titles[type];
+  let html="";
+  if(type==="brand") html=buildBrandFilterOptions();
+  if(type==="body") html=bodies.map(x=>`<button class="option" onclick="setBody('${x}');closeFilter()">${x}</button>`).join("");
+  if(type==="price") html=[[0,1000,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");
+  if(type==="year") html=[[2018,2020],[2021,2022],[2023,2024],[2025,2026]].map(x=>`<button class="option" onclick="setYear(${x[0]},${x[1]});closeFilter()">${x[0]} - ${x[1]}</button>`).join("");
+  if(type==="km") html=[[0,10000],[10001,30000],[30001,60000],[60001,Infinity]].map(x=>`<button class="option" onclick="setKm(${x[0]},${x[1]});closeFilter()">${x[1]===Infinity?'Acima de ':''}${x[0].toLocaleString()} km${x[1]!==Infinity?' - '+x[1].toLocaleString()+' km':''}</button>`).join("");
+  modalContent.innerHTML=html;
+}
+function jsAttr(v){return JSON.stringify(String(v??"")).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function buildBrandFilterOptions(){
+  const available=[]; const seen=new Set();
+  [...cars.map(c=>String(c?.brand||"").trim()).filter(Boolean),...brands].forEach(b=>{const key=b.toLowerCase();if(!seen.has(key)){seen.add(key);available.push(b);}});
+  available.sort((a,b)=>a.localeCompare(b,"pt",{sensitivity:"base"}));
+  return available.map(b=>{
+    const count=cars.filter(c=>String(c?.brand||"").trim().toLowerCase()===b.toLowerCase()&&c.published!==false).length;
+    return `<button class="option" onclick="openBrandFilter(${jsAttr(b)})"><strong>${esc(b)}</strong><small style="float:right;color:#777">(${count})</small></button>`;
+  }).join("");
+}
+function openBrandFilter(brand){
+  const wanted=String(brand||"").trim().toLowerCase(); const groups={};
+  cars.filter(c=>c.published!==false&&String(c.brand||"").trim().toLowerCase()===wanted&&String(c.model||"").trim()).forEach(c=>{
+    const model=String(c.model||"").trim(); const key=getModelKey(brand,model);
+    if(!groups[key]) groups[key]={model,count:0}; groups[key].count++;
+  });
+  const models=Object.values(groups).sort((a,b)=>a.model.localeCompare(b.model,"pt",{sensitivity:"base",numeric:true}));
+  modalTitle.textContent=`Modelos da ${brand}`;
+  modalContent.innerHTML=`<button class="option" onclick="openBrand(${jsAttr(brand)});closeFilter()"><i class="fa-solid fa-list"></i> Ver todos os modelos de ${esc(brand)}</button>`+
+    (models.length?models.map(x=>`<button class="option" onclick="openModel(${jsAttr(brand)},${jsAttr(x.model)});closeFilter()"><strong>${esc(x.model)}</strong><small style="float:right;color:#777">(${x.count})</small></button>`).join(""):`<p class="search-suggestion-empty">Nenhum modelo encontrado para esta marca.</p>`);
+}
 function closeFilter(){filterModal.style.display="none"}
 function toggleMenu(){mobileMenu.style.display=mobileMenu.style.display==="block"?"none":"block"}
 
