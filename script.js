@@ -69,16 +69,8 @@ function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="br
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
 function getModelKey(brand,model){return `${String(brand||"").trim()}|${String(model||"").trim()}`.toLowerCase();}
 function openModel(brand,model){
-  filter={brand:String(brand||""),body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
-  if(document.getElementById("quickSearch")) quickSearch.value=`${brand} ${model}`;
-  const matches=cars.filter(c=>getModelKey(c.brand,c.model)===getModelKey(brand,model));
-  const section=document.getElementById("results");
-  section?.classList.remove("hidden-home-results");
-  section?.classList.add("model-selection-results");
-  if(section){const h=section.querySelector(".results-head h2");if(h)h.textContent=`${brand} ${model} — ${matches.length} veículos`; }
-  // Dentro de um modelo agrupado mostramos todos os veículos desse modelo, em cartões maiores.
-  renderResults(matches,{limit:matches.length,modelView:true});
-  section?.scrollIntoView({behavior:"smooth"});
+  const params=new URLSearchParams({brand:String(brand||""),model:String(model||"")});
+  window.location.href=`modelos.html?${params.toString()}`;
 }
 function showModelMore(brand,model){openModel(brand,model);}
 function renderPopular(){
@@ -91,16 +83,16 @@ function renderPopular(){
     grouped[key].views+=Number(c.views||0);
     grouped[key].cars.push(c);
   });
-  // Mostra poucos grupos na página inicial. Os restantes continuam acessíveis pela pesquisa.
-  // O contador é a quantidade real de veículos do grupo, não o número de visualizações.
   const popular=Object.values(grouped).sort((a,b)=>b.views-a.views).slice(0,5);
   popularModels.innerHTML=popular.length?popular.map(x=>{
-    const brand=esc(x.brand).replace(/'/g,"&#39;");
-    const model=esc(x.model).replace(/'/g,"&#39;");
+    const href=`modelos.html?${new URLSearchParams({brand:x.brand,model:x.model}).toString()}`;
+    const photo=x.cars.find(c=>c.image)?.image || "";
     return `<article class="popular-model-block">
-      <button class="popular-model-title" onclick="openModel('${brand}','${model}')" aria-label="Ver ${esc(x.brand)} ${esc(x.model)}">
-        <span>🚗 ${esc(x.brand)} ${esc(x.model)}</span><b>(${x.cars.length})</b><i class="fa-solid fa-chevron-right"></i>
-      </button>
+      <a class="popular-model-link" href="${esc(href)}" aria-label="Ver ${esc(x.brand)} ${esc(x.model)}">
+        <img class="popular-model-photo" src="${esc(photo)}" alt="${esc(x.brand+' '+x.model)}" loading="lazy">
+        <div class="popular-model-copy"><small>${esc(String(x.brand).toUpperCase())}</small><strong>${esc(String(x.model).toUpperCase())} <em>(${x.cars.length})</em></strong></div>
+        <i class="fa-solid fa-chevron-right popular-model-arrow"></i>
+      </a>
     </article>`;
   }).join(""): `<p>Ainda não há modelos visualizados.</p>`;
 }
@@ -123,6 +115,8 @@ function renderResults(list,options={}){
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   if(list.length>visible.length){
     resultsGrid.insertAdjacentHTML("afterend",`<button type="button" class="results-more-btn" onclick="showAllResults()">Ver mais <i class="fa-solid fa-chevron-down"></i></button>`);
+  } else if(options.expanded && list.length>5 && !modelView){
+    resultsGrid.insertAdjacentHTML("afterend",`<button type="button" class="results-more-btn" onclick="showResultsLess()">Ver menos <i class="fa-solid fa-chevron-up"></i></button>`);
   }
   if(modelView) resultsGrid.classList.add("model-view-grid"); else resultsGrid.classList.remove("model-view-grid");
   window.__currentResultsList=list;
@@ -133,7 +127,13 @@ function showAllResults(){
   const list=Array.isArray(window.__currentResultsList)?window.__currentResultsList:[];
   if(!list.length)return;
   const modelView=!!window.__currentResultsModelView;
-  renderResults(list,{limit:list.length,modelView});
+  renderResults(list,{limit:list.length,modelView,expanded:true});
+}
+function showResultsLess(){
+  const list=Array.isArray(window.__currentResultsList)?window.__currentResultsList:[];
+  if(!list.length)return;
+  const modelView=!!window.__currentResultsModelView;
+  renderResults(list,{limit:5,modelView,expanded:false});
 }
 function applyFilters(){const section=document.getElementById("results");section?.classList.remove("hidden-home-results");section?.classList.remove("model-selection-results");renderResults(filtered());results.scrollIntoView({behavior:"smooth"});}
 function clearFilters(){filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);if(document.getElementById("quickSearch"))quickSearch.value="";renderResults(cars);}
@@ -164,7 +164,8 @@ function buildSearchSuggestions(query){
   if(!suggestions.length){box.innerHTML='<div class="search-suggestion-empty">Nenhum modelo encontrado.</div>';box.classList.add("show");return;}
   box.innerHTML=suggestions.map(x=>{
     const b=esc(x.brand).replace(/'/g,"&#39;"), m=esc(x.model).replace(/'/g,"&#39;");
-    return `<button type="button" class="search-suggestion" onclick="chooseSearchSuggestion('${b}','${m}')"><i class="fa-solid fa-car"></i><span>${esc(x.brand)} ${esc(x.model)}</span><b>(${x.count})</b></button>`;
+    const href=`modelos.html?${new URLSearchParams({brand:x.brand,model:x.model}).toString()}`;
+    return `<a class="search-suggestion" href="${esc(href)}"><span>${esc(x.brand)} ${esc(x.model)}</span><b>(${x.count})</b></a>`;
   }).join("");
   box.classList.add("show");
 }
