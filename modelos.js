@@ -21,9 +21,9 @@
       const cb=String(c.brand||'').trim().toLowerCase();
       const cm=String(c.model||'').trim().toLowerCase();
       if(cb!==wantedBrand) return false;
-      // O modelo selecionado representa a família do modelo: aceita o nome exato
-      // e variantes como "Dyna Truck", "Dyna 150", etc., sem misturar outras marcas.
-      return cm===wantedModel || cm.startsWith(wantedModel+' ') || cm.startsWith(wantedModel+'-') || cm.startsWith(wantedModel+'/');
+      // Agrupamento definido pelo nome do modelo: marca + nome exato.
+      // Motor, ano, combustível e restantes especificações não entram no grupo.
+      return cm===wantedModel;
     });
     const label=`${brand} ${model}`.trim();
     document.title=`${label} — DRIVE Global Car Market`;

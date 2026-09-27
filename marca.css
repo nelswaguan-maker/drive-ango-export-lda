@@ -1,0 +1,41 @@
+.brand-page{background:#f7f7f8;color:#20232d}
+.brand-page .header{position:sticky;top:0;z-index:50}
+.brand-page .top-actions{gap:18px}
+.brand-page .top-actions a,.brand-page .top-actions button{color:inherit;text-decoration:none}
+.brand-page-head{max-width:1100px;margin:0 auto;padding-top:32px;padding-bottom:16px}
+.brand-back{display:inline-flex;align-items:center;gap:8px;color:#e90016;text-decoration:none;font-weight:800;margin-bottom:18px}
+.brand-kicker{margin:0 0 6px;color:#777;font-size:12px;font-weight:900;letter-spacing:1.2px}
+.brand-heading-row h1{font-size:38px;margin:0 0 8px}
+.brand-heading-row p:last-child{font-size:17px;color:#666;margin:0}
+.brand-letters{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+.brand-letters a{min-width:38px;height:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #ddd;background:#fff;border-radius:8px;color:#292c3d;text-decoration:none;font-weight:800}
+.brand-letters a:hover{border-color:#e90016;color:#e90016}
+.brand-models-section{max-width:1100px;margin:0 auto 60px}
+.brand-model-group{scroll-margin-top:100px;margin:0 0 34px}
+.brand-model-letter{font-size:26px;font-weight:900;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid #e90016}
+.brand-model-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.brand-model-card{display:flex;flex-direction:column;background:#fff;border:1px solid #e3e3e3;border-radius:13px;overflow:hidden;text-decoration:none;color:#20232d;box-shadow:0 3px 14px #0000000a;transition:transform .15s,box-shadow .15s}
+.brand-model-card:hover{transform:translateY(-2px);box-shadow:0 7px 20px #00000014}
+.brand-model-photo{width:100%;height:190px;object-fit:cover;background:#eee;display:block}
+.brand-model-info{padding:14px 15px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand-model-info strong{font-size:20px;line-height:1.15}
+.brand-model-info small{color:#777;font-weight:700;white-space:nowrap}
+.brand-model-info i{color:#999}
+.brand-empty{background:#fff;border:1px solid #ddd;border-radius:12px;padding:32px;text-align:center;color:#666}
+@media(max-width:800px){
+ .brand-heading-row h1{font-size:30px}
+ .brand-model-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .brand-model-photo{height:155px}
+}
+@media(max-width:520px){
+ .brand-model-grid{grid-template-columns:1fr 1fr;gap:10px}
+ .brand-model-photo{height:125px}
+ .brand-model-info{padding:11px 10px}
+ .brand-model-info strong{font-size:16px}
+ .brand-model-info small{font-size:11px}
+ .brand-letters{gap:6px}
+ .brand-letters a{min-width:34px;height:34px}
+ .brand-page .top-actions a:nth-child(1) span,.brand-page .top-actions a:nth-child(2) span{display:none}
+}
+.dark-mode .brand-model-card,.dark-mode .brand-letters a{background:#191c22;color:#f4f4f4;border-color:#343842}
+.dark-mode .brand-heading-row p:last-child,.dark-mode .brand-model-info small{color:#aaa}

@@ -65,7 +65,31 @@ function contactNumber(){return localStorage.getItem(CONTACT_KEY)||"";}
 function whatsappHref(c){const n=contactNumber().replace(/\D/g,"");return n?`https://wa.me/${n}?text=${encodeURIComponent(`Olá, tenho interesse no ${c.brand} ${c.model} (${c.id}).`)}`:"#";}
 function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n}`:"#";}
 
-function renderBrands(){brandGrid.innerHTML=brands.map((b,i)=>`<button class="brand-card" onclick="setBrand('${b}')"><img src="${brandImgs[i]}" onerror="this.style.display='none'"><div>${b}<br><small>(${(72188-i*4300).toLocaleString("en-US")})</small></div></button>`).join("");}
+function renderBrands(){
+  const availableBrands=[];
+  const seen=new Set();
+  [...cars.map(c=>String(c?.brand||"").trim()).filter(Boolean), ...brands].forEach(b=>{
+    const key=b.toLowerCase();
+    if(!seen.has(key)){seen.add(key);availableBrands.push(b);}
+  });
+  availableBrands.sort((a,b)=>{
+    const ia=brands.findIndex(x=>x.toLowerCase()===a.toLowerCase());
+    const ib=brands.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+    if(ia>=0 && ib>=0) return ia-ib;
+    if(ia>=0) return -1; if(ib>=0) return 1;
+    return a.localeCompare(b);
+  });
+  brandGrid.innerHTML=availableBrands.map((b)=>{
+    const i=brands.findIndex(x=>x.toLowerCase()===b.toLowerCase());
+    const img=i>=0?brandImgs[i]:"";
+    const count=cars.filter(c=>String(c?.brand||"").trim().toLowerCase()===b.toLowerCase() && c.published!==false).length;
+    return `<button class="brand-card" onclick="openBrand('${String(b).replace(/'/g,"\\'")}')">${img?`<img src="${img}" onerror="this.style.display='none'">`:''}<div>${esc(b)}<br><small>(${count})</small></div></button>`;
+  }).join("");
+}
+function openBrand(brand){
+  const params=new URLSearchParams({brand:String(brand||"")});
+  window.location.href=`marca.html?${params.toString()}`;
+}
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
 function getModelKey(brand,model){return `${String(brand||"").trim()}|${String(model||"").trim()}`.toLowerCase();}
 function openModel(brand,model){

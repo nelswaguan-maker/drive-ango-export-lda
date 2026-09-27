@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marca — DRIVE Global Car Market</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="marca.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body class="brand-page">
+<header class="header">
+  <a class="logo" href="index.html"><span>DRIVE</span><small>GLOBAL CAR MARKET</small></a>
+  <nav class="top-actions">
+    <a href="index.html"><i class="fa-solid fa-house"></i><span>Início</span></a>
+    <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span></a>
+    <button class="menu-btn" type="button" onclick="location.href='index.html#marcas'"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
+  </nav>
+</header>
+
+<main>
+  <section class="brand-page-head content-section">
+    <a class="brand-back" href="index.html#marcas"><i class="fa-solid fa-arrow-left"></i> Voltar às marcas</a>
+    <div class="brand-heading-row">
+      <div>
+        <p class="brand-kicker">NAVEGAR POR MARCA</p>
+        <h1 id="brandTitle">Modelos da marca</h1>
+        <p id="brandSubtitle">A carregar modelos...</p>
+      </div>
+    </div>
+    <div id="brandLetters" class="brand-letters"></div>
+  </section>
+
+  <section class="brand-models-section content-section">
+    <div id="brandModels" class="brand-model-groups"></div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-links">
+    <details><summary>Comprar</summary><a href="index.html#results">Todos os carros</a><a href="index.html#precos">Por preço</a></details>
+    <details><summary>Suporte</summary><a href="#">Ajuda</a><a href="#">Contacto</a></details>
+    <details><summary>Sobre Nós</summary><a href="index.html#marcas">Marcas</a><a href="index.html#modelos">Modelos mais vistos</a></details>
+  </div>
+  <div class="footer-bottom">
+    <p>🌐 Português</p>
+    <p>📍 MOZAMBIQUE</p>
+    <small><a href="termos.html">Termos de Uso</a><br><br><a href="politica-privacidade.html">Política de Privacidade</a></small>
+    <div class="footer-sbt-notice">⚠️<div><strong>Aviso importante</strong><p>A DRIVE não é a SBT Japan. Somos uma facilitadora local independente. Pode fazer um pedido através do nosso site e entraremos em contacto com a SBT Japan para tratar da consulta.</p></div></div>
+    <div class="footer-copyright">© Angó Global Cars 2026 LTD</div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="cars-data.js"></script>
+<script src="currency.js"></script>
+<script src="marca.js"></script>
+</body>
+</html>
