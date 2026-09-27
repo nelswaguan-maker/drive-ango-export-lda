@@ -131,39 +131,6 @@ function applyPermissions(){
 function formatCountdown(until){if(!until)return "48:00:00";const d=Math.max(0,Number(until)-Date.now()),s=Math.floor(d/1000);return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(x=>String(x).padStart(2,"0")).join(":");}
 function getCar(id){return cars.find(c=>c.id===id)}
 
-async function runCatalogGrouping(){
-  if(!currentAdminUser || !has("edit")) return;
-  const btn=$("groupingBtn"), out=$("groupingResult");
-  if(!window.driveCarsData){alert("Módulo de carros não carregado.");return;}
-  if(!confirm("Agrupar o catálogo agora? O nome original de cada anúncio será mantido; apenas a marca e o grupo do modelo serão recalculados.")) return;
-  if(btn){btn.disabled=true;btn.textContent="A agrupar…";}
-  if(out) out.textContent="A analisar os carros publicados…";
-  try{
-    const {data,error}=await window.driveCarsData.fetchCars();
-    if(error) throw new Error(error.message);
-    const all=Array.isArray(data)?data:[];
-    let changed=0, groups=new Set();
-    for(const c of all){
-      const brand=window.driveCarsData.inferBrand(c.brand,c.model)||c.brand||"";
-      const model=window.driveCarsData.normalizeModel(brand,c.model)||c.model||"";
-      const next={...c,brandGroup:brand,modelGroup:model};
-      if(String(c.brandGroup||c.brand_group||"").trim()!==String(brand).trim() || String(c.modelGroup||c.model_group||"").trim()!==String(model).trim()){
-        const result=await window.driveCarsData.upsertCar(next,currentAdminUser.id);
-        if(result.error) throw new Error(result.error.message);
-        changed++;
-      }
-      if(brand&&model) groups.add(`${brand}|${model}`.toLowerCase());
-    }
-    await syncCarsFromBackend();
-    draw();
-    if(out) out.innerHTML=`<strong>✅ Agrupamento concluído.</strong><br>${all.length} carros analisados · ${changed} atualizados · ${groups.size} grupos encontrados.`;
-  }catch(err){
-    if(out) out.textContent=`❌ ${err.message||"Não foi possível agrupar o catálogo."}`;
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent="Agrupar agora";}
-  }
-}
-
 function draw(){
   if(!currentAdminUser)return;
   const now=Date.now();let changed=false;
@@ -608,6 +575,45 @@ async function markOrder(id,status){if(!isOwner()||!sb())return;const {error}=aw
 function subscribePurchaseOrders(){if(!isOwner()||!sb()||window.driveOrdersRealtime)return;window.driveOrdersRealtime=sb().channel('drive-purchase-orders-live').on('postgres_changes',{event:'*',schema:'public',table:'purchase_orders'},()=>{loadPurchaseOrders();try{if(document.visibilityState==='visible'&&'Notification' in window&&Notification.permission==='granted')new Notification('DRIVE — novo pedido de compra');}catch(e){}}).subscribe();}
 
 
+
+/* ===== AGRUPAMENTO PERSISTENTE MARCA → MODELO ===== */
+function groupingBrand(c){
+  if(window.driveCarsData?.inferBrand) return window.driveCarsData.inferBrand(c?.brand,c?.model);
+  return c?.brand||'';
+}
+function groupingModel(brand,c){
+  if(window.driveCarsData?.normalizeModel) return window.driveCarsData.normalizeModel(brand,c?.model||'');
+  return String(c?.model||'').trim();
+}
+async function runCatalogGrouping(){
+  if(!isOwner()){ alert('Apenas Proprietário Principal pode executar o agrupamento.'); return; }
+  if(!sb()){ alert('Supabase não configurado.'); return; }
+  const btn=$('groupingBtn'), box=$('groupingResult');
+  if(btn) { btn.disabled=true; btn.textContent='A agrupar…'; }
+  if(box) box.textContent='A analisar os carros publicados…';
+  try{
+    const {data,error}=await sb().from('drive_cars').select('id,brand,model,published');
+    if(error) throw error;
+    const rows=(data||[]).filter(c=>c.published!==false);
+    if(!rows.length){ if(box) box.textContent='Nenhum carro publicado para agrupar.'; return; }
+    let updated=0, failed=0;
+    for(const c of rows){
+      const brand=groupingBrand(c).trim();
+      const model=groupingModel(brand,c).trim();
+      if(!brand || !model) continue;
+      const {error:e}=await sb().from('drive_cars').update({brand_group:brand,model_group:model}).eq('id',c.id);
+      if(e) failed++; else updated++;
+    }
+    await syncCarsFromBackend();
+    draw();
+    if(box) box.innerHTML=`<strong>✅ Agrupamento concluído.</strong><br>${updated} carro(s) organizado(s) em Marca → Modelo.${failed?`<br>⚠️ ${failed} não foi(ram) atualizado(s). Verifica se as colunas <code>brand_group</code> e <code>model_group</code> existem no Supabase.`:''}`;
+  }catch(e){
+    console.error(e);
+    if(box) box.innerHTML=`<strong>❌ Não foi possível agrupar.</strong><br>${esc(e.message||e)}<br><small>Se ainda não executaste o SQL, cria as colunas <code>brand_group</code> e <code>model_group</code> em <code>drive_cars</code>.</small>`;
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='Agrupar agora'; }
+  }
+}
 
 /* ===== PROMOÇÕES — UPLOAD DIRETO DE IMAGEM ===== */
 async function uploadPromotionImage(file){

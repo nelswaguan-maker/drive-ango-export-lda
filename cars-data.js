@@ -77,13 +77,14 @@
     const rawModel=c.model||"";
     const resolvedBrand=inferBrand(c.brand,rawModel);
     return {
-      id:c.id, stock:c.stock||"", brand:resolvedBrand, brandGroup:c.brand_group||c.brandGroup||resolvedBrand, model:rawModel, modelGroup:c.model_group||c.modelGroup||normalizeModel(resolvedBrand,rawModel), body:c.body||"SUV", price:Number(c.price||0),
+      id:c.id, stock:c.stock||"", brand:resolvedBrand, model:rawModel, body:c.body||"SUV", price:Number(c.price||0),
       year:Number(c.year||0), km:Number(c.km||0), discount:Number(c.discount||0), engine:c.engine||"", fuel:c.fuel||"", arrivalPort:c.arrival_port||c.arrivalPort||"",
       weight:c.weight||"", trans:c.trans||"", drive:c.drive||"", wheel:c.wheel||"", color:c.color||"", location:c.location||"", seats:c.seats||"", doors:c.doors||"", dimensions:c.dimensions||"",
       images:Array.isArray(c.images)?c.images:[], image:c.image||((Array.isArray(c.images)&&c.images[0])||""),
       status:c.status||"available", published:c.published!==false,
       reservedAt:c.reservedAt?Number(c.reservedAt):(c.reserved_at?new Date(c.reserved_at).getTime():null),
       reservedUntil:c.reservedUntil?Number(c.reservedUntil):(c.reserved_until?new Date(c.reserved_until).getTime():null),
+      brandGroup:c.brand_group||c.brandGroup||"", modelGroup:c.model_group||c.modelGroup||"",
       createdAt:c.createdAt?Number(c.createdAt):(c.created_at?new Date(c.created_at).getTime():null),
       createdBy:c.createdBy||c.created_by||null,
       views:Number(c.views||0), updatedAt:c.updatedAt||c.updated_at||null
@@ -92,9 +93,10 @@
   function toRow(c,userId){
     const n=normalize(c);
     return {
-      id:n.id,stock:n.stock,brand:n.brand,brand_group:n.brandGroup||n.brand,model:n.model,model_group:n.modelGroup||normalizeModel(n.brand,n.model),body:n.body,price:n.price,year:n.year,km:n.km,discount:n.discount,
+      id:n.id,stock:n.stock,brand:n.brand,model:n.model,body:n.body,price:n.price,year:n.year,km:n.km,discount:n.discount,
       engine:n.engine,fuel:n.fuel,arrival_port:n.arrivalPort||"",weight:n.weight,trans:n.trans,drive:n.drive,wheel:n.wheel,color:n.color,location:n.location,seats:n.seats,doors:n.doors,dimensions:n.dimensions,images:n.images,image:n.image,
       status:n.status, published:n.published!==false,
+      brand_group:n.brandGroup||"", model_group:n.modelGroup||"",
       reserved_at:n.reservedAt?new Date(n.reservedAt).toISOString():null,
       reserved_until:n.reservedUntil?new Date(n.reservedUntil).toISOString():null,
       created_by:n.createdBy||userId||null,

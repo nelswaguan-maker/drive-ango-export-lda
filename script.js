@@ -54,6 +54,7 @@ function canonicalBrand(value){
   return hit?hit.name:raw;
 }
 function resolvedCarBrand(c){
+  if(c?.brandGroup) return canonicalBrand(c.brandGroup);
   if(window.driveCarsData && typeof window.driveCarsData.inferBrand==='function') return canonicalBrand(window.driveCarsData.inferBrand(c?.brand,c?.model));
   return canonicalBrand(c?.brand);
 }
@@ -122,7 +123,7 @@ function renderBrands(){
     const img=info?`https://cdn.simpleicons.org/${info.slug}`:"";
     const count=cars.filter(c=>{
       if(!c || c.published===false) return false;
-      const resolved=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim();
+      const resolved=resolvedCarBrand(c);
       return brandMatches(resolved,b);
     }).length;
     return `<button class="brand-card" type="button" onclick="openBrand(${jsAttr(b)})" aria-label="Ver modelos da ${esc(b)}">${img?`<img src="${img}" alt="Logo ${esc(b)}" loading="lazy" onerror="this.style.display='none'">`:''}<div>${esc(b)}<br><small>(${count.toLocaleString('pt-MZ')})</small></div></button>`;
@@ -148,7 +149,7 @@ function renderPopular(){
   const grouped={};
   cars.forEach(c=>{
     if(!c?.model || c.published===false) return;
-    const brand=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim(), model=String(c.modelGroup||c.model_group||normalizeModelName(brand,c.model)).trim();
+    const brand=resolvedCarBrand(c), model=normalizeModelName(brand,c.model,c.modelGroup);
     if(!model) return;
     const key=getModelKey(brand,model);
     if(!grouped[key]) grouped[key]={brand,model,views:0,cars:[]};
@@ -173,8 +174,6 @@ function renderRecent(){
   // Os carros são acessados por Marca → Modelo → Carros do modelo.
   const recent=document.getElementById("recentCars");
   if(recent) recent.innerHTML="";
-  const legacy=document.querySelector(".results-section:not(.model-selection-results)");
-  if(legacy) legacy.classList.add("hidden-home-results");
 }
 function filtered(){
   const list=cars.filter(c=>(!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${resolvedCarBrand(c)} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
@@ -245,7 +244,7 @@ function buildSearchSuggestions(query){
   const grouped={};
   cars.forEach(c=>{
     if(!c?.model || c.published===false)return;
-    const brand=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim(), model=String(c.modelGroup||c.model_group||normalizeModelName(brand,c.model)).trim();
+    const brand=resolvedCarBrand(c), model=normalizeModelName(brand,c.model,c.modelGroup);
     if(!model)return;
     const label=`${brand} ${model}`;
     const hay=`${label} ${c.id||""} ${c.body||""} ${c.engine||""}`.toLowerCase();

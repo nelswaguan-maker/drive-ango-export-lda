@@ -30,7 +30,7 @@
     });
     const grouped={};
     matches.forEach(c=>{
-      const model=String(c.modelGroup||c.model_group||normalizedModel(brand,c.model)||"No definido").trim();
+      const model=String(c.modelGroup||normalizedModel(brand,c.model)).trim();
       if(!model) return;
       const key=modelKey(brand,model);
       if(!grouped[key]) grouped[key]={model,count:0,photo:''};

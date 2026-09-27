@@ -29,7 +29,7 @@
         : c.brand;
       const cbRaw=String(resolved||'').trim().toLowerCase();
       const cb=brandAliases[cbRaw] ? brandAliases[cbRaw].toLowerCase() : cbRaw;
-      const cm=String(c.modelGroup||c.model_group||normalizeModel(brand,c.model)).trim().toLowerCase();
+      const cm=String(c.modelGroup||normalizeModel(brand,c.model)).trim().toLowerCase();
       if(cb!==wantedBrand) return false;
       return cm===normalizeModel(brand,model).toLowerCase();
     });
