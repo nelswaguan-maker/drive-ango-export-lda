@@ -2,7 +2,10 @@
 let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
 let cars=[];
+let adminCarsExpanded=false;
 let editingImages=[];
+let selectedPhotoFiles=[];
+let cropState=null;
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
 const $=id=>document.getElementById(id);
@@ -144,7 +147,8 @@ function draw(){
       .then(()=>syncCarsFromBackend())
       .catch(err=>console.warn("Atualização automática da reserva:",err));
   }
-  $("list").innerHTML=cars.map(c=>{
+  const visibleCars=adminCarsExpanded?cars:cars.slice(0,2);
+  $("list").innerHTML=visibleCars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;
     return `<div class="admin-item"><div><b>${esc(c.brand)} ${esc(c.model)}</b><small>ID: ${esc(c.id)} · ${driveFormatMoney(c.price)} · ${status} · ${pub?"🌐 NO SITE":"🚫 OCULTO"}</small></div><div class="item-actions">
@@ -155,7 +159,13 @@ function draw(){
     ${has("manageStatus")&&c.status==="sold"?`<button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir carro</button>`:""}
     ${has("delete")?`<button class="danger" onclick="removeCar('${esc(c.id)}')">Eliminar</button>`:""}</div></div>`;
   }).join("")||"<p>Nenhum carro publicado.</p>";
+  const moreBtn=$("adminCarsMoreBtn");
+  if(moreBtn){
+    moreBtn.style.display=cars.length>2?"block":"none";
+    moreBtn.textContent=adminCarsExpanded?"Mostrar menos":"Ver mais";
+  }
 }
+function toggleAdminCarsMore(){adminCarsExpanded=!adminCarsExpanded;draw();}
 
 
 async function uploadCarPhotos(files, carId){
@@ -178,23 +188,19 @@ async function uploadCarPhotos(files, carId){
   return uploaded;
 }
 
-let cropState={file:null,index:-1,image:null,scale:1,x:0,y:0,rect:null,dragMode:null,handle:null,startX:0,startY:0,startRect:null,imgBox:null};
-let selectedPhotoFiles=[];
-let croppedPhotoFiles=new Map();
-
 function renderPhotoPreview(files){
   const box=$("photoPreview");
   if(!box)return;
-  selectedPhotoFiles=Array.from(files||[]).slice(0,20);
-  box.innerHTML=selectedPhotoFiles.map((f,i)=>{
-    const src=croppedPhotoFiles.get(i)?.preview || URL.createObjectURL(f);
-    return `<div class="photo-thumb photo-editable"><img src="${src}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span><button type="button" class="crop-photo-btn" onclick="openCropEditor(${i})">✂️ Recortar</button></div>`;
+  const list=Array.from(files||[]).slice(0,20);
+  box.innerHTML=list.map((f,i)=>{
+    const src=f instanceof File?URL.createObjectURL(f):f;
+    const name=f instanceof File?esc(f.name):"Foto existente";
+    return `<div class="photo-thumb"><img src="${src}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span>${f instanceof File?`<button type="button" class="crop-photo-btn" onclick="openCropper(${i})">✂️ Recortar</button>`:`<small>${name}</small>`}</div>`;
   }).join("");
 }
 
 $("carPhotos")?.addEventListener("change",e=>{
   const files=Array.from(e.target.files||[]);
-  croppedPhotoFiles.clear();
   if(files.length>20){
     alert("Podes escolher no máximo 20 fotos.");
     e.target.value="";
@@ -202,117 +208,114 @@ $("carPhotos")?.addEventListener("change",e=>{
     renderPhotoPreview([]);
     return;
   }
-  renderPhotoPreview(files);
+  selectedPhotoFiles=files;
+  renderPhotoPreview(selectedPhotoFiles);
 });
 
-function openCropEditor(index){
+/* ===== EDITOR DE RECORTE OPCIONAL ===== */
+function openCropper(index){
   const file=selectedPhotoFiles[index];
   if(!file)return;
-  const modal=$("cropModal"),stage=$("cropStage");
-  if(!modal||!stage)return;
-  const img=new Image();
-  img.onload=()=>{
-    cropState={file,index,image:img,scale:1,x:0,y:0,rect:null,dragMode:null,handle:null,startX:0,startY:0,startRect:null,imgBox:null};
-    modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");
-    requestAnimationFrame(()=>{setupCropCanvas();drawCropCanvas();});
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      cropState={index,file,img,canvasW:0,canvasH:0,x:0,y:0,w:0,h:0,dragging:false,resizing:false,handle:null,startX:0,startY:0,startRect:null};
+      const modal=$("cropModal");
+      modal.classList.remove("hidden"); modal.setAttribute("aria-hidden","false");
+      drawCropper(true);
+    };
+    img.src=reader.result;
   };
-  img.src=URL.createObjectURL(file);
+  reader.readAsDataURL(file);
 }
-
-function setupCropCanvas(){
-  const stage=$("cropStage"),c=$("cropCanvas"),sel=$("cropSelection");
-  if(!stage||!c||!sel||!cropState?.image)return;
-  const cw=Math.max(320,Math.floor(stage.clientWidth)),ch=Math.max(230,Math.floor(stage.clientHeight));
-  c.width=cw;c.height=ch;
-  const img=cropState.image;
-  const scale=Math.min(cw/img.width,ch/img.height);
-  const iw=img.width*scale,ih=img.height*scale;
-  const ix=(cw-iw)/2,iy=(ch-ih)/2;
-  cropState.imgBox={x:ix,y:iy,w:iw,h:ih,scale};
-  const rw=Math.min(iw*.78,iw-20),rh=Math.min(ih*.78,ih-20);
-  cropState.rect={x:ix+(iw-rw)/2,y:iy+(ih-rh)/2,w:rw,h:rh};
-  positionCropSelection();
+function closeCropper(){
+  const modal=$("cropModal"); if(modal){modal.classList.add("hidden");modal.setAttribute("aria-hidden","true");}
+  cropState=null;
 }
-function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
-function positionCropSelection(){
-  const sel=$("cropSelection"),r=cropState?.rect;
-  if(!sel||!r)return;
-  sel.style.left=r.x+"px";sel.style.top=r.y+"px";sel.style.width=r.w+"px";sel.style.height=r.h+"px";
-}
-function drawCropCanvas(){
-  const c=$("cropCanvas"),ctx=c?.getContext("2d"),img=cropState?.image,box=cropState?.imgBox;
-  if(!ctx||!img||!box)return;
-  const cw=c.width,ch=c.height;ctx.clearRect(0,0,cw,ch);
-  ctx.fillStyle="#111";ctx.fillRect(0,0,cw,ch);
-  ctx.drawImage(img,box.x,box.y,box.w,box.h);
-  positionCropSelection();
-}
-function closeCropEditor(){
-  const m=$("cropModal");if(m){m.classList.add("hidden");m.setAttribute("aria-hidden","true");}
-  cropState.dragMode=null;cropState.handle=null;
-}
-function cropPoint(e){
-  const stage=$("cropStage"),r=stage.getBoundingClientRect();
-  return {x:e.clientX-r.left,y:e.clientY-r.top};
-}
-function beginCropDrag(e,mode,handle){
-  if(!cropState?.rect)return;
-  const p=cropPoint(e);cropState.dragMode=mode;cropState.handle=handle;cropState.startX=p.x;cropState.startY=p.y;cropState.startRect={...cropState.rect};
-  e.preventDefault();e.stopPropagation();$("cropStage")?.setPointerCapture?.(e.pointerId);
-}
-$("cropStage")?.addEventListener("pointerdown",e=>{
-  const handle=e.target.closest?.(".crop-handle");
-  if(handle){beginCropDrag(e,"resize",handle.dataset.handle);return;}
-  if(e.target.closest?.("#cropSelection"))beginCropDrag(e,"move",null);
-});
-$("cropStage")?.addEventListener("pointermove",e=>{
-  if(!cropState?.dragMode||!cropState.rect||!cropState.imgBox)return;
-  const p=cropPoint(e),dx=p.x-cropState.startX,dy=p.y-cropState.startY,b=cropState.imgBox,s=cropState.startRect;
-  const minW=Math.min(70,b.w),minH=Math.min(55,b.h);
-  let r={...s};
-  if(cropState.dragMode==="move"){
-    r.x=clamp(s.x+dx,b.x,b.x+b.w-s.w);r.y=clamp(s.y+dy,b.y,b.y+b.h-s.h);
+function drawCropper(reset=false){
+  if(!cropState)return;
+  const canvas=$("cropCanvas"),stage=$("cropStage"),rect=$("cropRect");
+  const maxW=Math.min(760,stage.clientWidth||760), maxH=Math.min(520,window.innerHeight*0.58);
+  const scale=Math.min(maxW/cropState.img.naturalWidth,maxH/cropState.img.naturalHeight,1);
+  const w=Math.max(1,Math.round(cropState.img.naturalWidth*scale)),h=Math.max(1,Math.round(cropState.img.naturalHeight*scale));
+  canvas.width=w;canvas.height=h;canvas.style.width=w+"px";canvas.style.height=h+"px";
+  const ctx=canvas.getContext("2d");ctx.clearRect(0,0,w,h);ctx.drawImage(cropState.img,0,0,w,h);
+  cropState.canvasW=w;cropState.canvasH=h;cropState.canvasLeft=canvas.offsetLeft||0;cropState.canvasTop=canvas.offsetTop||0;
+  if(reset || !cropState.w){
+    cropState.w=Math.max(80,Math.round(w*.78));
+    cropState.h=Math.max(60,Math.round(h*.70));
+    cropState.x=Math.round((w-cropState.w)/2);
+    cropState.y=Math.round((h-cropState.h)/2);
   }else{
-    const h=cropState.handle||"";
-    if(h.includes("w")){r.x=clamp(s.x+dx,b.x,s.x+s.w-minW);r.w=s.x+s.w-r.x;}
-    if(h.includes("e")){r.w=clamp(s.w+dx,minW,b.x+b.w-s.x);}
-    if(h.includes("n")){r.y=clamp(s.y+dy,b.y,s.y+s.h-minH);r.h=s.y+s.h-r.y;}
-    if(h.includes("s")){r.h=clamp(s.h+dy,minH,b.y+b.h-s.y);}
+    cropState.x=Math.max(0,Math.min(cropState.x,w-cropState.w));
+    cropState.y=Math.max(0,Math.min(cropState.y,h-cropState.h));
+    cropState.w=Math.min(cropState.w,w); cropState.h=Math.min(cropState.h,h);
   }
-  cropState.rect=r;positionCropSelection();
-});
-$("cropStage")?.addEventListener("pointerup",()=>{if(cropState){cropState.dragMode=null;cropState.handle=null;}});
-$("cropStage")?.addEventListener("pointercancel",()=>{if(cropState){cropState.dragMode=null;cropState.handle=null;}});
-window.addEventListener("resize",()=>{if(!$("cropModal")?.classList.contains("hidden")&&cropState?.image){setupCropCanvas();drawCropCanvas();}});
-
-function applyCropEditor(){
-  const c=$("cropCanvas"),img=cropState?.image,index=cropState?.index,file=cropState?.file,r=cropState?.rect,box=cropState?.imgBox;
-  if(!c||!img||index<0||!file||!r||!box)return;
-  const sx=Math.max(0,(r.x-box.x)/box.scale),sy=Math.max(0,(r.y-box.y)/box.scale);
-  const sw=Math.min(img.width-sx,r.w/box.scale),sh=Math.min(img.height-sy,r.h/box.scale);
-  if(sw<2||sh<2)return;
-  const out=document.createElement("canvas");out.width=Math.max(1,Math.round(sw));out.height=Math.max(1,Math.round(sh));
-  out.getContext("2d").drawImage(img,sx,sy,sw,sh,0,0,out.width,out.height);
+  rect.style.left=(cropState.canvasLeft+cropState.x)+"px";rect.style.top=(cropState.canvasTop+cropState.y)+"px";rect.style.width=cropState.w+"px";rect.style.height=cropState.h+"px";rect.style.transform="none";
+}
+function beginCropPointer(e,mode,handle){
+  if(!cropState)return;
+  e.preventDefault();e.stopPropagation();
+  const stage=$("cropStage");
+  stage.setPointerCapture?.(e.pointerId);
+  cropState.startX=e.clientX;cropState.startY=e.clientY;
+  cropState.startRect={x:cropState.x,y:cropState.y,w:cropState.w,h:cropState.h};
+  cropState.dragging=mode==="move";cropState.resizing=mode==="resize";cropState.handle=handle||null;
+}
+function updateCropPointer(e){
+  if(!cropState||(!cropState.dragging&&!cropState.resizing))return;
+  const dx=e.clientX-cropState.startX,dy=e.clientY-cropState.startY,r=cropState.startRect,minW=70,minH=60;
+  if(cropState.dragging){
+    cropState.x=Math.max(0,Math.min(cropState.canvasW-r.w,r.x+dx));
+    cropState.y=Math.max(0,Math.min(cropState.canvasH-r.h,r.y+dy));
+  }else{
+    let x=r.x,y=r.y,w=r.w,h=r.h,hd=cropState.handle;
+    if(hd.includes("w")){x=Math.max(0,Math.min(r.x+r.w-minW,r.x+dx));w=r.x+r.w-x;}
+    if(hd.includes("e")){w=Math.max(minW,Math.min(cropState.canvasW-r.x,r.w+dx));}
+    if(hd.includes("n")){y=Math.max(0,Math.min(r.y+r.h-minH,r.y+dy));h=r.y+r.h-y;}
+    if(hd.includes("s")){h=Math.max(minH,Math.min(cropState.canvasH-r.y,r.h+dy));}
+    cropState.x=x;cropState.y=y;cropState.w=w;cropState.h=h;
+  }
+  const rect=$("cropRect");rect.style.left=(cropState.canvasLeft+cropState.x)+"px";rect.style.top=(cropState.canvasTop+cropState.y)+"px";rect.style.width=cropState.w+"px";rect.style.height=cropState.h+"px";
+}
+function endCropPointer(e){
+  if(!cropState)return;
+  cropState.dragging=false;cropState.resizing=false;cropState.handle=null;
+  $("cropStage")?.releasePointerCapture?.(e.pointerId);
+}
+function applyCrop(){
+  if(!cropState)return;
+  const {img,canvasW,canvasH,x,y,w,h,index,file}=cropState;
+  const sx=Math.max(0,Math.round(x/canvasW*img.naturalWidth));
+  const sy=Math.max(0,Math.round(y/canvasH*img.naturalHeight));
+  const sw=Math.max(1,Math.min(img.naturalWidth-sx,Math.round(w/canvasW*img.naturalWidth)));
+  const sh=Math.max(1,Math.min(img.naturalHeight-sy,Math.round(h/canvasH*img.naturalHeight)));
+  const out=document.createElement("canvas");out.width=sw;out.height=sh;
+  out.getContext("2d").drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
   out.toBlob(blob=>{
     if(!blob)return;
-    const cropped=new File([blob],file.name.replace(/\.[^.]+$/i,"")+"-crop.jpg",{type:"image/jpeg",lastModified:Date.now()});
-    croppedPhotoFiles.set(index,{file:cropped,preview:URL.createObjectURL(blob)});
-    renderPhotoPreview(selectedPhotoFiles);closeCropEditor();
+    selectedPhotoFiles[index]=new File([blob],file.name.replace(/\.[^.]+$/i,"")+"-recortada.jpg",{type:"image/jpeg",lastModified:Date.now()});
+    closeCropper();renderPhotoPreview(selectedPhotoFiles);
   },"image/jpeg",0.92);
 }
+$("cropRect")?.addEventListener("pointerdown",e=>beginCropPointer(e,"move"));
+$("cropRect")?.querySelectorAll?.(".crop-handle").forEach(handle=>handle.addEventListener("pointerdown",e=>beginCropPointer(e,"resize",handle.dataset.handle)));
+$("cropStage")?.addEventListener("pointermove",updateCropPointer);
+$("cropStage")?.addEventListener("pointerup",endCropPointer);
+$("cropStage")?.addEventListener("pointercancel",endCropPointer);
 
 $("carForm")?.addEventListener("submit",async e=>{
   e.preventDefault();if(!has("publish")&&!$("editId").value)return;
   const id=$("editId").value;
   const baseId=id||("DRV"+Date.now());
-  const files=Array.from($("carPhotos")?.files||[]);
+  const files=selectedPhotoFiles.slice();
   if(files.length>20){alert("Podes escolher no máximo 20 fotos.");return;}
+  if(files.length + editingImages.length > 20){alert(`Este carro já tem ${editingImages.length} fotos. Podes adicionar no máximo ${20-editingImages.length} novas fotos.`);return;}
   try{
     let images=editingImages.slice();
-    if(files.length){
-      const prepared=files.map((f,i)=>croppedPhotoFiles.get(i)?.file||f);
-      images=await uploadCarPhotos(prepared,baseId);
-    }
+    if(files.length) images=images.concat(await uploadCarPhotos(files,baseId));
+    images=images.slice(0,20);
     if(!images.length){alert("Escolhe pelo menos 1 foto da galeria.");return;}
     const base={stock:$("stock").value.trim(),brand:$("brand").value.trim(),model:$("model").value.trim(),body:$("body").value,price:+$("price").value,year:+$("year").value,km:+$("km").value,discount:+$("discount").value||0,engine:$("engine").value.trim(),fuel:$("fuel").value,arrivalPort:$("arrivalPort").value.trim(),weight:$("weight").value.trim(),trans:$("trans").value.trim(),drive:$("drive").value.trim(),wheel:$("wheel").value.trim(),color:$("color").value.trim(),location:$("location").value.trim(),seats:$("seats").value.trim(),doors:$("doors").value.trim(),dimensions:$("dimensions").value.trim(),images,image:images[0]||"",published:$("published").checked};
     let target;
@@ -339,10 +342,11 @@ function editCar(id){
   if($("published"))$("published").checked=c.published!==false;
   editingImages=Array.isArray(c.images)&&c.images.length?c.images:(c.image?[c.image]:[]);
   if($("carPhotos"))$("carPhotos").value="";
-  if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span></div>`).join("");
+  selectedPhotoFiles=[];
+  if($("photoPreview"))$("photoPreview").innerHTML=editingImages.map((src,i)=>`<div class="photo-thumb"><img src="${esc(src)}" alt="Foto ${i+1}"><span>${i===0?"Capa":i+1}</span><small>Foto existente</small></div>`).join("");
   $("editId").value=c.id;$("saveCarBtn").textContent="Guardar alterações";window.scrollTo({top:0,behavior:"smooth"});
 }
-function resetCarForm(){editingImages=[];selectedPhotoFiles=[];croppedPhotoFiles.clear();if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
+function resetCarForm(){editingImages=[];selectedPhotoFiles=[];if($("carPhotos"))$("carPhotos").value="";if($("photoPreview"))$("photoPreview").innerHTML="";$("carForm")?.reset();$("editId").value="";$("saveCarBtn").textContent="Publicar carro";}
 async function togglePublished(id){
   if(!has("publish"))return;
   const c=getCar(id);if(!c)return;

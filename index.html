@@ -30,7 +30,7 @@
 <section class="hero">
   <div class="hero-overlay">
     <div class="hero-search">
-      <input id="quickSearch" placeholder="Pesquise por ID de estoque ou palavras-chave">
+      <div class="search-input-wrap"><input id="quickSearch" autocomplete="off" placeholder="Pesquise por ID de estoque ou palavras-chave"><div id="searchSuggestions" class="search-suggestions" aria-live="polite"></div></div>
       <button onclick="doQuickSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
     </div>
     <h1>DRIVE WHAT'S NEXT</h1>
@@ -146,8 +146,8 @@
   </div>
 </section>
 
-<section class="content-section">
-  <h2 class="section-heading">Visualizado recentemente</h2>
+<section class="content-section recent-home-section">
+  <h2 class="section-heading">Mais recente</h2>
   <div id="recentCars" class="recent-list"></div>
 </section>
 
@@ -157,13 +157,6 @@
 </section>
 </main>
 
-
-<div id="popularModelModal" class="modal">
-  <div class="modal-box popular-model-modal-box">
-    <button class="close" onclick="closePopularModel()">×</button>
-    <div id="popularModelContent"></div>
-  </div>
-</div>
 
 <div id="notificationsModal" class="modal">
   <div class="modal-box notifications-box">

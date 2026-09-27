@@ -85,4 +85,42 @@
 .dark-mode .footer-sbt-notice{background:#302a18;border-color:#66552b;color:#f4f4f4}.dark-mode .footer-sbt-notice p{color:#d8cda9}.dark-mode .footer-copyright{color:#aaa}
 @media(max-width:700px){.footer-sbt-notice{margin:16px 10px 8px;padding:12px;font-size:12px}.footer-sbt-notice p{font-size:11px}.footer-copyright{font-size:12px}}
 
-.popular-card{width:100%;border:0;background:none;text-align:left;cursor:pointer;padding:0;display:flex;gap:18px;align-items:center;color:#292c3d}.popular-card span{display:flex;flex-direction:column;gap:5px}.popular-card strong{font-size:25px}.popular-card em{font-size:13px;font-style:normal;color:#e90016;font-weight:700}.popular-model-modal-box{max-width:760px}.popular-modal-head small{color:#777;font-weight:700}.popular-modal-head h2{margin:4px 0}.popular-modal-head h2 span{color:#777;font-size:.8em}.popular-modal-head p{margin-top:0;color:#666}.popular-car-list{display:grid;gap:10px}.popular-car-row{display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;border:1px solid #ddd;border-radius:10px;padding:10px}.popular-car-row img{width:110px;height:78px;object-fit:cover;border-radius:7px}.popular-car-info{display:grid;gap:4px}.popular-car-info strong{font-size:16px}.popular-car-info small,.popular-car-info div{color:#666;font-size:12px}.popular-car-info b{font-size:15px}.popular-car-row .details-btn{background:#e90016;color:#fff;text-decoration:none;padding:10px 12px;border-radius:7px;white-space:nowrap;font-size:12px;font-weight:700}.dark-mode .popular-card{color:#f4f4f4}.dark-mode .popular-car-row{border-color:#343842;background:#191c22}.dark-mode .popular-car-info small,.dark-mode .popular-car-info div{color:#aaa}@media(max-width:700px){.popular-card img{width:45%;height:150px}.popular-card strong{font-size:19px}.popular-car-row{grid-template-columns:82px 1fr}.popular-car-row img{width:82px;height:65px}.popular-car-row .details-btn{grid-column:1/-1;text-align:center;width:100%}}
+/* Atualização: homepage vertical e compacta */
+.popular-list{display:flex;flex-direction:column;gap:18px;max-width:760px;margin:0 auto}.popular-model-block{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:14px;box-shadow:0 3px 12px #0000000d}.popular-model-title{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:2px 0 12px;font-size:19px;font-weight:800;color:#292c3d;cursor:pointer;text-align:left}.popular-model-title b{font-size:15px;color:#777}.popular-model-cars{display:flex;flex-direction:column;gap:9px}.popular-mini-car{display:flex;align-items:center;gap:12px;text-decoration:none;color:#292c3d;border-top:1px solid #eee;padding-top:9px}.popular-mini-car img{width:115px;height:72px;object-fit:cover;border-radius:8px}.popular-mini-car span{font-weight:700}.model-more-btn{margin-top:12px;width:100%;border:0;background:#f1f2f4;border-radius:8px;padding:10px;font-weight:700;color:#292c3d;cursor:pointer}.hidden-home-results{display:none!important}.recent-home-section{margin-top:30px}.admin-more-btn{display:block!important;width:100%!important;margin-top:12px}.admin-item:nth-child(n+3){display:none}.dark-mode .popular-model-block{background:#191c22;border-color:#343842}.dark-mode .popular-model-title,.dark-mode .popular-mini-car{color:#f4f4f4}.dark-mode .model-more-btn{background:#292d36;color:#f4f4f4}
+/* Escala visual aproximada de 80%, mantendo responsividade */
+body{zoom:.8}
+@media(max-width:700px){body{zoom:1}.popular-model-title{font-size:17px}.popular-mini-car img{width:100px;height:64px}}
+
+/* Seleção de veículos dentro de um modelo agrupado */
+.model-selection-results .results-head h2{font-size:30px}
+.model-selection-results .car-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.model-selection-results .car-card img{height:280px}
+.model-selection-results .car-card .info{padding:18px}
+.model-selection-results .car-card h3{font-size:22px}
+.model-selection-results .car-card .price{font-size:24px}
+.results-more-btn{display:block;width:min(420px,100%);margin:24px auto 8px;padding:15px 22px;border:0;border-radius:8px;background:#ed0018;color:#fff;font-size:18px;font-weight:800;cursor:pointer}
+@media(max-width:700px){.model-selection-results .car-grid{grid-template-columns:1fr;gap:18px}.model-selection-results .car-card img{height:230px}.model-selection-results .car-card h3{font-size:20px}.model-selection-results .car-card .price{font-size:22px}}
+
+/* Pesquisa com sugestões de modelos */
+.hero-search{position:relative;z-index:50}
+.search-input-wrap{position:relative;flex:1}
+.hero-search .search-input-wrap input{width:100%;height:100%}
+.search-suggestions{display:none;position:absolute;left:0;right:0;top:100%;background:#fff;border-radius:0 0 10px 10px;box-shadow:0 8px 22px #0003;overflow-y:auto;overflow-x:hidden;border:1px solid #ddd;border-top:0;max-height:310px;z-index:100}
+.search-suggestions.show{display:block}
+.search-suggestion{width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;border:0;border-bottom:1px solid #eee;background:#fff;color:#292c3d;text-align:left;font-size:17px;cursor:pointer}
+.search-suggestion:hover{background:#f6f6f6}
+.search-suggestion i{color:#e90016;width:22px}
+.search-suggestion span{flex:1;font-weight:700}
+.search-suggestion b{color:#666}
+.search-suggestion-empty{padding:15px;color:#777}
+/* Página de seleção de um modelo: um carro por linha, largura de dois cartões */
+.model-selection-results .car-grid{grid-template-columns:1fr;gap:28px}
+.model-selection-results .car-card{width:100%}
+.model-selection-results .car-card img{height:360px}
+.model-selection-results .car-card .info{padding:22px}
+.model-selection-results .car-card h3{font-size:25px}
+.model-selection-results .car-card .price{font-size:27px}
+@media(max-width:700px){
+  .model-selection-results .car-grid{grid-template-columns:1fr;gap:20px}
+  .model-selection-results .car-card img{height:250px}
+}
