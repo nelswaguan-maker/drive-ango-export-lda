@@ -1,6 +1,8 @@
 (function(){
   const params=new URLSearchParams(location.search);
-  const brand=(params.get('brand')||'').trim();
+  const brandRaw=(params.get('brand')||'').trim();
+  const brandAliases={"mercedes-benz":"Mercedes","mercedes benz":"Mercedes","citroen":"Citroën","vw":"Volkswagen","landrover":"Land Rover"};
+  const brand=brandAliases[brandRaw.toLowerCase()] || brandRaw;
   const model=(params.get('model')||'').trim();
   const title=document.getElementById('modelTitle');
   const subtitle=document.getElementById('modelSubtitle');
@@ -18,7 +20,8 @@
     const wantedModel=String(model||'').trim().toLowerCase();
     const matches=cars.filter(c=>{
       if(c.published===false) return false;
-      const cb=String(c.brand||'').trim().toLowerCase();
+      const cbRaw=String(c.brand||'').trim().toLowerCase();
+      const cb=brandAliases[cbRaw] ? brandAliases[cbRaw].toLowerCase() : cbRaw;
       const cm=String(c.model||'').trim().toLowerCase();
       if(cb!==wantedBrand) return false;
       // Agrupamento definido pelo nome do modelo: marca + nome exato.

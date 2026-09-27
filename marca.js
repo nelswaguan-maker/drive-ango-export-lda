@@ -1,6 +1,5 @@
 (function(){
   const params=new URLSearchParams(location.search);
-  const brand=(params.get('brand')||'').trim();
   const title=document.getElementById('brandTitle');
   const subtitle=document.getElementById('brandSubtitle');
   const letters=document.getElementById('brandLetters');
@@ -8,12 +7,17 @@
 
   const esc=v=>String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
   const norm=v=>String(v??'').trim().toLowerCase();
-  const modelKey=(b,m)=>`${norm(b)}|${norm(m)}`;
+  const catalog=[
+    {name:'Toyota',aliases:['toyota']},{name:'Honda',aliases:['honda']},{name:'Nissan',aliases:['nissan']},{name:'Mazda',aliases:['mazda']},{name:'Suzuki',aliases:['suzuki']},{name:'Mitsubishi',aliases:['mitsubishi']},{name:'Daihatsu',aliases:['daihatsu']},{name:'Subaru',aliases:['subaru']},{name:'Hino',aliases:['hino']},{name:'Volkswagen',aliases:['volkswagen','vw']},{name:'BMW',aliases:['bmw']},{name:'Isuzu',aliases:['isuzu']},{name:'Lexus',aliases:['lexus']},{name:'Mercedes',aliases:['mercedes','mercedes-benz','mercedes benz']},{name:'Audi',aliases:['audi']},{name:'Volvo',aliases:['volvo']},{name:'Land Rover',aliases:['land rover','landrover']},{name:'Ford',aliases:['ford']},{name:'Peugeot',aliases:['peugeot']},{name:'Jeep',aliases:['jeep']},{name:'Citroën',aliases:['citroen','citroën']},{name:'Jaguar',aliases:['jaguar']},{name:'Hyundai',aliases:['hyundai']},{name:'Kia',aliases:['kia']}
+  ];
+  const canonical=v=>{const raw=String(v??'').trim();const hit=catalog.find(x=>x.aliases.some(a=>norm(a)===norm(raw)));return hit?hit.name:raw;};
+  const brand=canonical(params.get('brand')||'');
+  const modelKey=(b,m)=>`${norm(canonical(b))}|${norm(m)}`;
   const modelHref=(b,m)=>`modelos.html?${new URLSearchParams({brand:String(b),model:String(m)}).toString()}`;
 
   function render(cars){
-    const wanted=norm(brand);
-    const matches=cars.filter(c=>c && c.published!==false && norm(c.brand)===wanted && String(c.model||'').trim());
+    const wanted=norm(canonical(brand));
+    const matches=cars.filter(c=>c && c.published!==false && norm(canonical(c.brand))===wanted && String(c.model||'').trim());
     const grouped={};
     matches.forEach(c=>{
       const model=String(c.model||'').trim();
