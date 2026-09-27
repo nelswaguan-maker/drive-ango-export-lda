@@ -53,6 +53,10 @@ function canonicalBrand(value){
   const hit=brandCatalog.find(x=>x.aliases.some(a=>a.toLowerCase()===raw.toLowerCase()));
   return hit?hit.name:raw;
 }
+function resolvedCarBrand(c){
+  if(window.driveCarsData && typeof window.driveCarsData.inferBrand==='function') return canonicalBrand(window.driveCarsData.inferBrand(c?.brand,c?.model));
+  return canonicalBrand(c?.brand);
+}
 function brandMatches(a,b){return canonicalBrand(a).toLowerCase()===canonicalBrand(b).toLowerCase();}
 const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van"];
 
@@ -107,7 +111,7 @@ function renderBrands(){
   const extra=[];
   const seen=new Set(brandCatalog.map(x=>x.name.toLowerCase()));
   cars.forEach(c=>{
-    const raw=String(c?.brand||"").trim();
+    const raw=resolvedCarBrand(c);
     if(!raw)return;
     const canonical=canonicalBrand(raw);
     if(!seen.has(canonical.toLowerCase())){seen.add(canonical.toLowerCase());extra.push(canonical);}
@@ -116,7 +120,11 @@ function renderBrands(){
   brandGrid.innerHTML=all.map(b=>{
     const info=brandInfo(b);
     const img=info?`https://cdn.simpleicons.org/${info.slug}`:"";
-    const count=cars.filter(c=>c.published!==false && brandMatches(c?.brand,b)).length;
+    const count=cars.filter(c=>{
+      if(!c || c.published===false) return false;
+      const resolved=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim();
+      return brandMatches(resolved,b);
+    }).length;
     return `<button class="brand-card" type="button" onclick="openBrand(${jsAttr(b)})" aria-label="Ver modelos da ${esc(b)}">${img?`<img src="${img}" alt="Logo ${esc(b)}" loading="lazy" onerror="this.style.display='none'">`:''}<div>${esc(b)}<br><small>(${count.toLocaleString('pt-MZ')})</small></div></button>`;
   }).join("");
 }
@@ -126,7 +134,11 @@ function openBrand(brand){
   window.location.href=`marca.html?${params.toString()}`;
 }
 function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
-function getModelKey(brand,model){return `${canonicalBrand(brand).trim()}|${String(model||"").trim()}`.toLowerCase();}
+function normalizeModelName(brand,model){
+  if(window.driveCarsData && typeof window.driveCarsData.normalizeModel==='function') return window.driveCarsData.normalizeModel(brand,model);
+  return String(model||"").trim();
+}
+function getModelKey(brand,model){return `${canonicalBrand(brand).trim()}|${normalizeModelName(brand,model)}`.toLowerCase();}
 function openModel(brand,model){
   const params=new URLSearchParams({brand:canonicalBrand(brand),model:String(model||"").trim()});
   window.location.href=`modelos.html?${params.toString()}`;
@@ -136,7 +148,8 @@ function renderPopular(){
   const grouped={};
   cars.forEach(c=>{
     if(!c?.model || c.published===false) return;
-    const brand=String(c.brand||"").trim(), model=String(c.model||"").trim();
+    const brand=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim(), model=String(c.modelGroup||c.model_group||normalizeModelName(brand,c.model)).trim();
+    if(!model) return;
     const key=getModelKey(brand,model);
     if(!grouped[key]) grouped[key]={brand,model,views:0,cars:[]};
     grouped[key].views+=Number(c.views||0);
@@ -155,9 +168,16 @@ function renderPopular(){
     </article>`;
   }).join(""): `<p>Ainda não há modelos visualizados.</p>`;
 }
-function renderRecent(){const c=cars[8]||cars[0];if(!c){recentCars.innerHTML="";return;}recentCars.innerHTML=`<div class="recent-card"><img src="${c.image||""}"><div class="recent-info"><h3>2025/12 ${esc(String(c.brand||"").toUpperCase())} ${esc(String(c.model||"").toUpperCase())}</h3><p class="price">${driveFormatMoney(c.price)}</p><div class="specs"><span>☷ ${Number(c.km).toLocaleString()}km</span><span>⚙ ${esc(c.engine||"—")}</span><span>⚙ ${esc(c.trans||"—")}</span><span>◉ ${esc(c.drive||"—")}</span><span>⚖ ${esc(c.weight||"—")}</span><span>◌ ${esc(c.wheel||"—")}</span></div><a class="estimate" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></div>`;}
+function renderRecent(){
+  // A página inicial não mostra carros individuais abaixo dos logotipos.
+  // Os carros são acessados por Marca → Modelo → Carros do modelo.
+  const recent=document.getElementById("recentCars");
+  if(recent) recent.innerHTML="";
+  const legacy=document.querySelector(".results-section:not(.model-selection-results)");
+  if(legacy) legacy.classList.add("hidden-home-results");
+}
 function filtered(){
-  const list=cars.filter(c=>(!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${c.brand} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
+  const list=cars.filter(c=>(!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${resolvedCarBrand(c)} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
   return list.sort((a,b)=>{
     const brandCmp=String(a.brand||"").trim().localeCompare(String(b.brand||"").trim(),"pt",{sensitivity:"base"});
     if(brandCmp) return brandCmp;
@@ -225,7 +245,8 @@ function buildSearchSuggestions(query){
   const grouped={};
   cars.forEach(c=>{
     if(!c?.model || c.published===false)return;
-    const brand=String(c.brand||"").trim(), model=String(c.model||"").trim();
+    const brand=String(c.brandGroup||c.brand_group||resolvedCarBrand(c)).trim(), model=String(c.modelGroup||c.model_group||normalizeModelName(brand,c.model)).trim();
+    if(!model)return;
     const label=`${brand} ${model}`;
     const hay=`${label} ${c.id||""} ${c.body||""} ${c.engine||""}`.toLowerCase();
     if(!hay.includes(q))return;
@@ -278,7 +299,7 @@ function buildBrandFilterOptions(){
 function openBrandFilter(brand){
   const displayBrand=canonicalBrand(brand);
   const groups={};
-  cars.filter(c=>c.published!==false&&brandMatches(c.brand,displayBrand)&&String(c.model||"").trim()).forEach(c=>{
+  cars.filter(c=>c.published!==false&&brandMatches(resolvedCarBrand(c),displayBrand)&&String(c.model||"").trim()).forEach(c=>{
     const model=String(c.model||"").trim();
     const key=getModelKey(displayBrand,model);
     if(!groups[key])groups[key]={model,count:0};

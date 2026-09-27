@@ -131,6 +131,39 @@ function applyPermissions(){
 function formatCountdown(until){if(!until)return "48:00:00";const d=Math.max(0,Number(until)-Date.now()),s=Math.floor(d/1000);return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(x=>String(x).padStart(2,"0")).join(":");}
 function getCar(id){return cars.find(c=>c.id===id)}
 
+async function runCatalogGrouping(){
+  if(!currentAdminUser || !has("edit")) return;
+  const btn=$("groupingBtn"), out=$("groupingResult");
+  if(!window.driveCarsData){alert("Módulo de carros não carregado.");return;}
+  if(!confirm("Agrupar o catálogo agora? O nome original de cada anúncio será mantido; apenas a marca e o grupo do modelo serão recalculados.")) return;
+  if(btn){btn.disabled=true;btn.textContent="A agrupar…";}
+  if(out) out.textContent="A analisar os carros publicados…";
+  try{
+    const {data,error}=await window.driveCarsData.fetchCars();
+    if(error) throw new Error(error.message);
+    const all=Array.isArray(data)?data:[];
+    let changed=0, groups=new Set();
+    for(const c of all){
+      const brand=window.driveCarsData.inferBrand(c.brand,c.model)||c.brand||"";
+      const model=window.driveCarsData.normalizeModel(brand,c.model)||c.model||"";
+      const next={...c,brandGroup:brand,modelGroup:model};
+      if(String(c.brandGroup||c.brand_group||"").trim()!==String(brand).trim() || String(c.modelGroup||c.model_group||"").trim()!==String(model).trim()){
+        const result=await window.driveCarsData.upsertCar(next,currentAdminUser.id);
+        if(result.error) throw new Error(result.error.message);
+        changed++;
+      }
+      if(brand&&model) groups.add(`${brand}|${model}`.toLowerCase());
+    }
+    await syncCarsFromBackend();
+    draw();
+    if(out) out.innerHTML=`<strong>✅ Agrupamento concluído.</strong><br>${all.length} carros analisados · ${changed} atualizados · ${groups.size} grupos encontrados.`;
+  }catch(err){
+    if(out) out.textContent=`❌ ${err.message||"Não foi possível agrupar o catálogo."}`;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Agrupar agora";}
+  }
+}
+
 function draw(){
   if(!currentAdminUser)return;
   const now=Date.now();let changed=false;

@@ -12,15 +12,26 @@
   ];
   const canonical=v=>{const raw=String(v??'').trim();const hit=catalog.find(x=>x.aliases.some(a=>norm(a)===norm(raw)));return hit?hit.name:raw;};
   const brand=canonical(params.get('brand')||'');
-  const modelKey=(b,m)=>`${norm(canonical(b))}|${norm(m)}`;
+  const normalizedModel=(b,m)=>{
+    if(window.driveCarsData && typeof window.driveCarsData.normalizeModel==='function') return window.driveCarsData.normalizeModel(b,m);
+    return String(m||'').trim();
+  };
+  const modelKey=(b,m)=>`${norm(canonical(b))}|${norm(normalizedModel(b,m))}`;
   const modelHref=(b,m)=>`modelos.html?${new URLSearchParams({brand:String(b),model:String(m)}).toString()}`;
 
   function render(cars){
     const wanted=norm(canonical(brand));
-    const matches=cars.filter(c=>c && c.published!==false && norm(canonical(c.brand))===wanted && String(c.model||'').trim());
+    const matches=cars.filter(c=>{
+      if(!c || c.published===false || !String(c.model||'').trim()) return false;
+      const resolved=(window.driveCarsData && typeof window.driveCarsData.inferBrand==='function')
+        ? window.driveCarsData.inferBrand(c.brand,c.model)
+        : c.brand;
+      return norm(canonical(resolved))===wanted;
+    });
     const grouped={};
     matches.forEach(c=>{
-      const model=String(c.model||'').trim();
+      const model=String(c.modelGroup||c.model_group||normalizedModel(brand,c.model)||"No definido").trim();
+      if(!model) return;
       const key=modelKey(brand,model);
       if(!grouped[key]) grouped[key]={model,count:0,photo:''};
       grouped[key].count++;
@@ -73,7 +84,14 @@
     if(window.driveCarsData && window.driveSupabase){
       try{
         const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
-        if(!error){render(Array.isArray(data)?data:[]);return;}
+        if(!error){
+          const online=Array.isArray(data)?data:[];
+          // Se a consulta online vier vazia mas o catálogo local já tiver anúncios,
+          // não apagar a navegação existente. O catálogo publicado continua sendo a fonte principal.
+          let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
+          render(online.length?online:cached);
+          return;
+        }
       }catch(e){}
     }
     try{render(JSON.parse(localStorage.getItem('driveCars')||'[]'));}catch(e){render([]);}

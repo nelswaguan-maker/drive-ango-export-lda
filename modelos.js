@@ -7,7 +7,11 @@
   const title=document.getElementById('modelTitle');
   const subtitle=document.getElementById('modelSubtitle');
   const list=document.getElementById('modelCars');
-  const key=(b,m)=>`${String(b||'').trim()}|${String(m||'').trim()}`.toLowerCase();
+  const normalizeModel=(b,m)=>{
+    if(window.driveCarsData && typeof window.driveCarsData.normalizeModel==='function') return window.driveCarsData.normalizeModel(b,m);
+    return String(m||'').trim();
+  };
+  const key=(b,m)=>`${String(b||'').trim()}|${normalizeModel(b,m)}`.toLowerCase();
   const esc=v=>String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
   const money=v=>{
     try{
@@ -20,13 +24,14 @@
     const wantedModel=String(model||'').trim().toLowerCase();
     const matches=cars.filter(c=>{
       if(c.published===false) return false;
-      const cbRaw=String(c.brand||'').trim().toLowerCase();
+      const resolved=(window.driveCarsData && typeof window.driveCarsData.inferBrand==='function')
+        ? window.driveCarsData.inferBrand(c.brand,c.model)
+        : c.brand;
+      const cbRaw=String(resolved||'').trim().toLowerCase();
       const cb=brandAliases[cbRaw] ? brandAliases[cbRaw].toLowerCase() : cbRaw;
-      const cm=String(c.model||'').trim().toLowerCase();
+      const cm=String(c.modelGroup||c.model_group||normalizeModel(brand,c.model)).trim().toLowerCase();
       if(cb!==wantedBrand) return false;
-      // Agrupamento definido pelo nome do modelo: marca + nome exato.
-      // Motor, ano, combustível e restantes especificações não entram no grupo.
-      return cm===wantedModel;
+      return cm===normalizeModel(brand,model).toLowerCase();
     });
     const label=`${brand} ${model}`.trim();
     document.title=`${label} — DRIVE Global Car Market`;
@@ -62,7 +67,12 @@
     }
     if(window.driveCarsData && window.driveSupabase){
       const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
-      if(!error){render(data||[]);return;}
+      if(!error){
+        const online=Array.isArray(data)?data:[];
+        let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
+        render(online.length?online:cached);
+        return;
+      }
     }
     try{render(JSON.parse(localStorage.getItem('driveCars')||'[]'));}catch(e){render([]);}
   }
