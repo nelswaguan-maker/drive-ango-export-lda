@@ -29,7 +29,7 @@
         : c.brand;
       const cbRaw=String(resolved||'').trim().toLowerCase();
       const cb=brandAliases[cbRaw] ? brandAliases[cbRaw].toLowerCase() : cbRaw;
-      const cm=String(c.modelGroup||normalizeModel(brand,c.model)).trim().toLowerCase();
+      const cm=String(normalizeModel(brand,c.model)).trim().toLowerCase();
       if(cb!==wantedBrand) return false;
       return cm===normalizeModel(brand,model).toLowerCase();
     });
@@ -70,7 +70,7 @@
       if(!error){
         const online=Array.isArray(data)?data:[];
         let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
-        render(online.length?online:cached);
+        render(online.length ? online : cached);
         return;
       }
     }

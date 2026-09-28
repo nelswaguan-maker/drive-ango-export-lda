@@ -13,14 +13,26 @@
   function inferBrand(brand,model){
     const b=cleanText(brand), m=cleanText(model);
     const n=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim();
-    const nb=n(b), nm=n(m);
-    // Se o nome do modelo já começa pelo fabricante, esse prefixo é a fonte mais confiável.
-    // Isto corrige anúncios antigos em que a marca ficou vazia ou foi gravada incorretamente.
+    const nb=n(b);
+    // Alguns anúncios antigos começam pelo ano/data, por exemplo:
+    // "2009/3 TOYOTA HIACE VAN DX". Removemos esse prefixo antes de
+    // procurar a marca, para que Toyota/Honda/Mazda etc. sejam reconhecidas.
+    const nm=n(m).replace(/^(?:19|20)\d{2}(?:\s*[\/.-]\s*\d{1,2})?\s+/,'');
+    // Se o nome do modelo começa pelo fabricante, esse prefixo é a fonte mais confiável.
+    // Isto também corrige anúncios antigos em que a marca ficou vazia ou foi gravada incorretamente.
     for(const [prefix,canonical] of BRAND_PREFIXES){
       const np=n(prefix);
       if(nm===np || nm.startsWith(np+" ") || nm.startsWith(np+"/")) return canonical;
     }
-    // Mantém a marca informada quando não há prefixo explícito no modelo.
+    // Alguns anúncios antigos têm a marca vazia, errada ou misturada no próprio
+    // campo brand. Nesse caso procuramos o fabricante no texto combinado.
+    const combined = (nb + " " + nm).replace(/\s+/g," ").trim();
+    for(const [prefix,canonical] of BRAND_PREFIXES){
+      const np=n(prefix);
+      const re=new RegExp("(?:^|\\s)"+np.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?:\\s|$)","i");
+      if(re.test(combined)) return canonical;
+    }
+    // Mantém a marca informada quando não há evidência melhor.
     return b;
   }
   // Normaliza nomes de modelos para agrupar versões, anos e acabamentos do mesmo modelo.

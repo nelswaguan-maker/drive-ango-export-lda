@@ -92,19 +92,38 @@ async function loginAdmin(){
   if(error){$("loginMsg").textContent="Email ou senha incorretos.";return;}
   currentAdminUser=data.user;
   const signedEmail=String(data.user?.email||"").trim().toLowerCase();
-  // O proprietário tem prioridade absoluta: um convite antigo nunca pode bloquear o login.
-  if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(signedEmail)){
+  const owner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(signedEmail);
+
+  // Segurança: autenticar no Supabase não é suficiente para entrar no painel.
+  // Primeiro tentamos aceitar um convite pendente; depois verificamos se a conta
+  // é realmente proprietária ou administradora ativa.
+  if(owner){
     localStorage.removeItem("drivePendingAdminInvite");
   }else{
     const pending=localStorage.getItem("drivePendingAdminInvite");
     if(pending){
       try{
         const ok=await claimInvite(pending);
-        if(!ok){localStorage.removeItem("drivePendingAdminInvite");}
-        else alert("Convite aceite. A tua conta agora é administradora.");
+        if(ok) alert("Convite aceite. A tua conta agora é administradora.");
+        else localStorage.removeItem("drivePendingAdminInvite");
       }catch(err){
         localStorage.removeItem("drivePendingAdminInvite");
       }
+    }
+
+    let allowed=false;
+    try{
+      const result=await sb().rpc("is_current_user_admin");
+      allowed=!result.error && result.data===true;
+    }catch(err){
+      allowed=false;
+    }
+    if(!allowed){
+      await sb().auth.signOut();
+      currentAdminUser=null;
+      $("loginMsg").textContent="Esta conta não tem acesso ao painel de Administração.";
+      guard();
+      return;
     }
   }
   await init();

@@ -30,7 +30,7 @@
     });
     const grouped={};
     matches.forEach(c=>{
-      const model=String(c.modelGroup||normalizedModel(brand,c.model)).trim();
+      const model=String(normalizedModel(brand,c.model)).trim();
       if(!model) return;
       const key=modelKey(brand,model);
       if(!grouped[key]) grouped[key]={model,count:0,photo:''};
@@ -89,7 +89,7 @@
           // Se a consulta online vier vazia mas o catálogo local já tiver anúncios,
           // não apagar a navegação existente. O catálogo publicado continua sendo a fonte principal.
           let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
-          render(online.length?online:cached);
+          render(online.length ? online : cached);
           return;
         }
       }catch(e){}

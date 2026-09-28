@@ -54,9 +54,10 @@ function canonicalBrand(value){
   return hit?hit.name:raw;
 }
 function resolvedCarBrand(c){
-  if(c?.brandGroup) return canonicalBrand(c.brandGroup);
+  // A marca visível é sempre recalculada a partir do anúncio.
+  // Assim um brand_group antigo/vazio não pode fazer Toyota aparecer como (0).
   if(window.driveCarsData && typeof window.driveCarsData.inferBrand==='function') return canonicalBrand(window.driveCarsData.inferBrand(c?.brand,c?.model));
-  return canonicalBrand(c?.brand);
+  return canonicalBrand(c?.brandGroup || c?.brand);
 }
 function brandMatches(a,b){return canonicalBrand(a).toLowerCase()===canonicalBrand(b).toLowerCase();}
 const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van"];
@@ -73,15 +74,23 @@ function saveCars(list){localStorage.setItem(KEY,JSON.stringify(list));}
 let cars=loadCars();
 
 async function loadPublicCars(){
+  // Mantém o último catálogo local enquanto o Supabase responde.
+  // Assim uma falha temporária/RLS não transforma todos os contadores em (0).
+  const cached=Array.isArray(cars)?cars:[];
   if(window.driveCarsData && window.driveSupabase){
     try{
       const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
-      if(!error){cars=Array.isArray(data)?data:[];localStorage.setItem(KEY,JSON.stringify(cars));return;}
+      if(!error){
+        const online=Array.isArray(data)?data:[];
+        cars=online;
+        localStorage.setItem(KEY,JSON.stringify(cars));
+        return;
+      }
       console.warn("Catálogo online:",error.message);
     }catch(e){console.warn("Catálogo online:",e);}
   }
-  // Não mostrar anúncios antigos de um único telefone quando o catálogo online falha.
-  cars=[];
+  // Se o online falhar, usa o último catálogo local em vez de apagar a contagem.
+  cars=cached;
 }
 function subscribePublicCars(){
   if(!window.driveCarsData || window.publicCarsRealtime) return;
@@ -122,7 +131,7 @@ function renderBrands(){
     const info=brandInfo(b);
     const img=info?`https://cdn.simpleicons.org/${info.slug}`:"";
     const count=cars.filter(c=>{
-      if(!c || c.published===false) return false;
+      if(!c || c.published===false || !String(c.model||"").trim()) return false;
       const resolved=resolvedCarBrand(c);
       return brandMatches(resolved,b);
     }).length;
@@ -174,6 +183,10 @@ function renderRecent(){
   // Os carros são acessados por Marca → Modelo → Carros do modelo.
   const recent=document.getElementById("recentCars");
   if(recent) recent.innerHTML="";
+  // Compatibilidade com versões antigas que ainda tenham uma grelha de resultados
+  // na página inicial: mantê-la oculta até o utilizador aplicar um filtro.
+  const homeResults=document.getElementById("results");
+  if(homeResults) homeResults.classList.add("hidden-home-results");
 }
 function filtered(){
   const list=cars.filter(c=>(!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${resolvedCarBrand(c)} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
