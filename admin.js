@@ -6,6 +6,7 @@ let adminCarsExpanded=false;
 let editingImages=[];
 let selectedPhotoFiles=[];
 let cropState=null;
+let adminLoginBusy=false;
 
 const PERMS={publish:"Publicar",edit:"Editar",manageStatus:"Reservar / vender / reabrir",delete:"Eliminar"};
 const $=id=>document.getElementById(id);
@@ -84,10 +85,16 @@ async function init(){
 }
 
 async function createOwner(){ location.href="index.html?openSignup=1"; }
-async function loginAdmin(){
+async function loginAdmin(event){
+  event?.preventDefault();
+  if(adminLoginBusy)return;
   if(!sb()){ $("loginMsg").textContent="Supabase não configurado."; return; }
   const email=$("adminEmail").value.trim().toLowerCase(), pass=$("adminPass").value;
   if(!email||!pass){$("loginMsg").textContent="Introduz o email e a senha.";return;}
+  adminLoginBusy=true;
+  const button=$("adminLoginSubmit");
+  if(button){button.disabled=true;button.textContent="A entrar...";}
+  try{
   const {data,error}=await sb().auth.signInWithPassword({email,password:pass});
   if(error){$("loginMsg").textContent="Email ou senha incorretos.";return;}
   currentAdminUser=data.user;
@@ -127,6 +134,10 @@ async function loginAdmin(){
     }
   }
   await init();
+  }finally{
+    adminLoginBusy=false;
+    if(button){button.disabled=false;button.textContent="Entrar no painel";}
+  }
 }
 
 async function logoutAdmin(){
@@ -564,6 +575,13 @@ document.addEventListener("DOMContentLoaded",async()=>{
   if(currentAdminUser) await init();
   await tryPendingInvite();
   setInterval(async()=>{if(currentAdminUser){await syncCarsFromBackend();draw();drawAdmins();}},5000);
+});
+
+// Login ADM: a autenticação só é executada pelo envio explícito do formulário.
+document.addEventListener("DOMContentLoaded",()=>{
+  const form=$("adminLoginForm");
+  if(!form)return;
+  form.addEventListener("submit",loginAdmin);
 });
 
 // Mostrar/ocultar senhas

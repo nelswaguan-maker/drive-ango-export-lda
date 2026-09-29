@@ -185,10 +185,10 @@
     <button class="close" onclick="closeClientModal()">×</button>
     <div id="clientLoginView">
       <h2>Entrar na sua conta</h2>
-      <form id="clientLoginForm" class="client-form">
-        <input id="loginEmail" type="email" required placeholder="Email">
-        <div class="password-field"><input id="loginPass" type="password" required placeholder="Senha"><button type="button" class="show-pass" data-target="loginPass" aria-label="Mostrar senha">👁</button></div>
-        <button type="submit">Entrar</button>
+      <form id="clientLoginForm" class="client-form" autocomplete="off">
+        <input id="loginEmail" type="email" autocomplete="username" required placeholder="Email">
+        <div class="password-field"><input id="loginPass" type="password" autocomplete="current-password" required placeholder="Senha"><button type="button" class="show-pass" data-target="loginPass" aria-label="Mostrar senha">👁</button></div>
+        <button id="clientLoginSubmit" type="submit">Entrar</button>
       </form>
       <div class="login-extra-actions">
         <button class="login-link-btn" onclick="showForgotPassword()" type="button">Esqueceu a senha?</button>

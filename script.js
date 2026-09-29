@@ -535,15 +535,33 @@ async function clientSignup(e){
     alert(pendingInvite?"Conta criada! Confirma o email. Depois volta ao Drive e entra com a mesma conta; o convite de administrador será ativado automaticamente.":"Conta criada! Verifica o teu email para confirmar a conta e depois entra no Drive Cars.");
   }
 }
+let clientLoginBusy=false;
+
 async function clientLogin(e){
-  e.preventDefault();if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
+  e.preventDefault();
+  if(clientLoginBusy)return;
+  if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
+  const form=e.currentTarget;
+  const button=document.getElementById("clientLoginSubmit");
   const email=document.getElementById("loginEmail").value.trim().toLowerCase(),pass=document.getElementById("loginPass").value;
-  const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
-  if(error){alert("Email ou senha incorretos.");return;}
-  // O proprietário nunca deve ficar preso a um convite antigo.
-  if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(data.user?.email||"").trim().toLowerCase()))
-    localStorage.removeItem("drivePendingAdminInvite");
-  const profile=await getClientProfile(data.user);currentClientProfile=profile;updateClientHeader(data.user);await refreshAdminState(data.user);showClientAccount(profile);closeClientModal();
+  if(!email||!pass)return;
+  clientLoginBusy=true;
+  if(button){button.disabled=true;button.textContent="A entrar...";}
+  try{
+    const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
+    if(error){alert("Email ou senha incorretos.");return;}
+    if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(data.user?.email||"").trim().toLowerCase()))
+      localStorage.removeItem("drivePendingAdminInvite");
+    const profile=await getClientProfile(data.user);
+    currentClientProfile=profile;
+    updateClientHeader(data.user);
+    await refreshAdminState(data.user);
+    showClientAccount(profile);
+    closeClientModal();
+  }finally{
+    clientLoginBusy=false;
+    if(button){button.disabled=false;button.textContent="Entrar";}
+  }
 }
 
 async function loginWithGoogle(){
@@ -586,7 +604,11 @@ async function updateRecoveredPassword(e){
 
 async function initClientModal(){
   const login=document.getElementById("clientLoginForm"),signup=document.getElementById("clientSignupForm"),forgot=document.getElementById("forgotPasswordForm"),reset=document.getElementById("resetPasswordForm");
-  if(login)login.onsubmit=clientLogin;if(signup)signup.onsubmit=clientSignup;if(forgot)forgot.onsubmit=sendPasswordReset;if(reset)reset.onsubmit=updateRecoveredPassword;
+  if(login){
+    login.onsubmit=clientLogin;
+
+  }
+  if(signup)signup.onsubmit=clientSignup;if(forgot)forgot.onsubmit=sendPasswordReset;if(reset)reset.onsubmit=updateRecoveredPassword;
   const googleConsent=document.getElementById("googleLegalConsent");
   const googleBtn=document.getElementById("googleLoginBtn");
   if(googleConsent&&googleBtn)googleConsent.addEventListener("change",()=>googleBtn.disabled=!googleConsent.checked);
