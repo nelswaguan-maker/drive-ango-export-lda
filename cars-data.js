@@ -99,6 +99,7 @@
       brandGroup:c.brand_group||c.brandGroup||"", modelGroup:c.model_group||c.modelGroup||"",
       createdAt:c.createdAt?Number(c.createdAt):(c.created_at?new Date(c.created_at).getTime():null),
       createdBy:c.createdBy||c.created_by||null,
+      publisherPhone:c.publisherPhone||c.publisher_phone||"",
       views:Number(c.views||0), updatedAt:c.updatedAt||c.updated_at||null
     };
   }
@@ -112,6 +113,7 @@
       reserved_at:n.reservedAt?new Date(n.reservedAt).toISOString():null,
       reserved_until:n.reservedUntil?new Date(n.reservedUntil).toISOString():null,
       created_by:n.createdBy||userId||null,
+      publisher_phone:n.publisherPhone||"",
       created_at:n.createdAt?new Date(n.createdAt).toISOString():undefined
     };
   }

@@ -69,8 +69,7 @@
       const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
       if(!error){
         const online=Array.isArray(data)?data:[];
-        let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
-        render(online.length ? online : cached);
+        render(online);
         return;
       }
     }

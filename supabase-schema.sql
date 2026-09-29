@@ -514,6 +514,8 @@ begin
     return new;
   end if;
   if tg_op = 'UPDATE' then
+    -- O contacto do publicador pertence ao anúncio original e não pode ser trocado por outro ADM durante uma edição.
+    new.publisher_phone := old.publisher_phone;
     if new.status is distinct from old.status
        or new.reserved_at is distinct from old.reserved_at
        or new.reserved_until is distinct from old.reserved_until then
@@ -524,10 +526,10 @@ begin
     end if;
     if row(
       new.stock,new.brand,new.model,new.body,new.price,new.year,new.km,new.discount,
-      new.engine,new.weight,new.trans,new.drive,new.wheel,new.images,new.image,new.created_by
+      new.engine,new.weight,new.trans,new.drive,new.wheel,new.images,new.image,new.created_by,new.publisher_phone
     ) is distinct from row(
       old.stock,old.brand,old.model,old.body,old.price,old.year,old.km,old.discount,
-      old.engine,old.weight,old.trans,old.drive,old.wheel,old.images,old.image,old.created_by
+      old.engine,old.weight,old.trans,old.drive,old.wheel,old.images,old.image,old.created_by,old.publisher_phone
     ) then
       if not edit_ok then raise exception 'Sem permissão para editar anúncios'; end if;
     end if;
@@ -575,3 +577,4 @@ grant execute on function public.increment_car_view(text) to anon, authenticated
 -- DRIVE CARS: novos campos do anúncio (cilindrada, combustível e porto de chegada)
 alter table if exists public.drive_cars add column if not exists fuel text not null default '';
 alter table if exists public.drive_cars add column if not exists arrival_port text not null default '';
+alter table if exists public.drive_cars add column if not exists publisher_phone text not null default '';

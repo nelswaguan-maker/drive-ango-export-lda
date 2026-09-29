@@ -112,8 +112,9 @@ function statusHTML(c){
   return '<span class="status-badge available">DISPONÍVEL</span>';
 }
 function contactNumber(){return localStorage.getItem(CONTACT_KEY)||"";}
-function whatsappHref(c){const n=contactNumber().replace(/\D/g,"");return n?`https://wa.me/${n}?text=${encodeURIComponent(`Olá, tenho interesse no ${c.brand} ${c.model} (${c.id}).`)}`:"#";}
-function callHref(){const n=contactNumber().replace(/\D/g,"");return n?`tel:+${n}`:"#";}
+function carContactNumber(c){return String(c?.publisherPhone||c?.publisher_phone||contactNumber()||"");}
+function whatsappHref(c){const n=carContactNumber(c).replace(/\D/g,"");return n?`https://wa.me/${n}?text=${encodeURIComponent(`Olá, tenho interesse no ${c.brand} ${c.model} (Stock ${c.stock||c.id}).`)}`:"#";}
+function callHref(c){const n=carContactNumber(c).replace(/\D/g,"");return n?`tel:+${n}`:"#";}
 
 function renderBrands(){
   // Mostra sempre o catálogo completo de marcas, mesmo quando uma delas ainda
@@ -143,7 +144,13 @@ function openBrand(brand){
   const params=new URLSearchParams({brand:canonical});
   window.location.href=`marca.html?${params.toString()}`;
 }
-function renderBodies(){bodyGrid.innerHTML=bodies.map((b,i)=>`<button class="body-card" onclick="setBody('${b}')"><b>${b}</b><br><small>(${(56112-i*4200).toLocaleString("en-US")})</small></button>`).join("");}
+function renderBodies(){
+  if(!bodyGrid)return;
+  bodyGrid.innerHTML=bodies.map(b=>{
+    const count=cars.filter(c=>c.published!==false && String(c.body||"").trim().toLowerCase()===b.toLowerCase()).length;
+    return `<button class="body-card" onclick="setBody(${jsAttr(b)})"><b>${esc(b)}</b><br><small>(${count.toLocaleString('pt-MZ')})</small></button>`;
+  }).join("");
+}
 function normalizeModelName(brand,model){
   if(window.driveCarsData && typeof window.driveCarsData.normalizeModel==='function') return window.driveCarsData.normalizeModel(brand,model);
   return String(model||"").trim();
@@ -218,7 +225,7 @@ function renderResults(list,options={}){
       <div class="card-status">${statusHTML(c)}</div>
       <div class="car-image-wrap"><a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><button type="button" class="heart image-heart" onclick="toggleFav('${esc(c.id)}',this)" aria-label="Adicionar aos favoritos"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button></div>
       <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${driveFormatMoney(c.price)}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
-      <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref()}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
+      <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref(c)}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   if(list.length>visible.length){
     resultsGrid.insertAdjacentHTML("afterend",`<button type="button" class="results-more-btn" onclick="showAllResults()">Ver mais <i class="fa-solid fa-chevron-down"></i></button>`);
@@ -436,7 +443,7 @@ async function clientLogout(){
 }
 function updateFooterContact(){
   const el=document.getElementById("footerContact");if(!el)return;
-  const n=contactNumber();el.textContent=n?`WhatsApp / Ligar: ${n}`:"WhatsApp / Ligar: configure o contacto no painel Admin.";
+  const n=contactNumber();el.textContent=n?`WhatsApp / Ligar: ${n}`:"WhatsApp / Ligar: cada anúncio usa o contacto do administrador que o publicou.";
 }
 function updateClientHeader(user){currentClientUser=user||null;const el=document.getElementById("clientLabel");if(el)el.textContent=user?(user.user_metadata?.name||user.email||"Meu perfil"):"Conecte-se";}
 

@@ -4,11 +4,11 @@ let cars=[];
 let car=null;
 let currentImageIndex=Math.max(0,Number(new URLSearchParams(location.search).get("imagem")||0)||0);
 const contact=localStorage.getItem("driveContact")||"";
-const phone=contact.replace(/\D/g,"");
+function carPhone(){return String(car?.publisherPhone||car?.publisher_phone||contact||"").replace(/\D/g,"");}
 function status(){if(car.status==="sold")return '<span class="detail-status sold">VENDIDO</span>';if(car.status==="reserved")return `<span class="detail-status reserved">RESERVADO — ${countdown(car.reservedUntil)}</span>`;return '<span class="detail-status available">DISPONÍVEL</span>';}
 function countdown(until){if(!until)return "48:00:00";let s=Math.max(0,Math.floor((Number(until)-Date.now())/1000));return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(x=>String(x).padStart(2,"0")).join(":");}
-function wa(){if(!phone)return "#";return `https://wa.me/${phone}?text=${encodeURIComponent(`Olá, tenho interesse no ${car.brand} ${car.model} (${car.id}).`)}`;}
-function call(){return phone?`tel:+${phone}`:"#";}
+function wa(){const phone=carPhone();if(!phone)return "#";return `https://wa.me/${phone}?text=${encodeURIComponent(`Olá, tenho interesse no ${car.brand} ${car.model} (Stock ${car.stock||car.id}).`)}`;}
+function call(){const phone=carPhone();return phone?`tel:+${phone}`:"#";}
 function escHtml(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]||m));}
 function safeImageUrl(v){const u=String(v||"").trim();if(!u)return "";try{const x=new URL(u,location.href);return x.protocol==="https:"?x.href:"";}catch(_){return "";}}
 function gallery(){return Array.isArray(car.images)&&car.images.length?car.images:(car.image?[car.image]:[]);}

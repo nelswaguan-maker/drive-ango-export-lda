@@ -86,10 +86,9 @@
         const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
         if(!error){
           const online=Array.isArray(data)?data:[];
-          // Se a consulta online vier vazia mas o catálogo local já tiver anúncios,
-          // não apagar a navegação existente. O catálogo publicado continua sendo a fonte principal.
-          let cached=[]; try{cached=JSON.parse(localStorage.getItem('driveCars')||'[]');}catch(e){}
-          render(online.length ? online : cached);
+          // Consulta online bem-sucedida é a fonte de verdade pública.
+          // Nunca substituir um resultado vazio por cache, pois o cache pode conter anúncios ocultos.
+          render(online);
           return;
         }
       }catch(e){}

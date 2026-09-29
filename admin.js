@@ -80,7 +80,7 @@ async function init(){
   await loadPromotions();
   subscribePromotions();
   renderUser(); draw(); await drawAdmins(); await drawInvites();
-  if($("contactPhone")) $("contactPhone").value=localStorage.getItem(CONTACT_KEY)||"";
+  await loadAdminContact();
   applyPermissions();
 }
 
@@ -151,10 +151,33 @@ function renderUser(){
   $("roleBadge").textContent=isOwner()?"👑 Proprietário Principal":"🛡️ Administrador";
   $("permissionNote").textContent=isOwner()?"Tens acesso total ao painel.":"As tuas permissões foram definidas pelo Proprietário Principal.";
 }
+async function loadAdminContact(){
+  let phone="";
+  try{
+    if(sb()&&currentAdminUser){
+      const {data}=await sb().from("profiles").select("phone").eq("id",currentAdminUser.id).maybeSingle();
+      phone=String(data?.phone||"").trim();
+    }
+  }catch(e){console.warn("Contacto do administrador:",e);}
+  if(!phone) phone=String(currentAdminUser?.user_metadata?.phone||localStorage.getItem(CONTACT_KEY)||"").trim();
+  if(phone) localStorage.setItem(CONTACT_KEY,phone);
+  if($("contactPhone")) $("contactPhone").value=phone;
+  return phone;
+}
+async function getCurrentAdminContact(){
+  try{
+    if(sb()&&currentAdminUser){
+      const {data}=await sb().from("profiles").select("phone").eq("id",currentAdminUser.id).maybeSingle();
+      if(data?.phone) return String(data.phone).trim();
+    }
+  }catch(e){}
+  return String(currentAdminUser?.user_metadata?.phone||localStorage.getItem(CONTACT_KEY)||"").trim();
+}
+
 function applyPermissions(){
   const u=currentAdminUser;if(!u)return;
   $("staffSection")?.classList.toggle("hidden",!isOwner());
-  $("settingsSection")?.classList.toggle("hidden",true); $("adminSettingsBtn")?.classList.toggle("hidden",!isOwner());
+  $("settingsSection")?.classList.toggle("hidden",true); $("adminSettingsBtn")?.classList.toggle("hidden",false);
   if(!has("publish")) $("carForm")?.classList.add("hidden");
 }
 
@@ -355,7 +378,9 @@ $("carForm")?.addEventListener("submit",async e=>{
       if(!target){alert("Carro não encontrado.");return;}
       Object.assign(target,base);
     }else{
-      target={id:baseId,...base,status:"available",createdAt:Date.now()};
+      const publisherPhone=await getCurrentAdminContact();
+      target={id:baseId,...base,status:"available",createdAt:Date.now(),createdBy:currentAdminUser.id,publisherPhone};
+      if(!publisherPhone) alert("Aviso: este administrador ainda não tem WhatsApp guardado. Podes definir em Definições → Contacto e WhatsApp.");
     }
     const result=await window.driveCarsData.upsertCar(target,currentAdminUser.id);
     if(result.error) throw new Error("Não foi possível sincronizar o anúncio: "+result.error.message);
@@ -525,7 +550,7 @@ async function tryPendingInvite(){
 }
 
 /* ===== CONTACTO ===== */
-$("contactForm")?.addEventListener("submit",e=>{e.preventDefault();if(!isOwner())return;const n=$("contactPhone").value.trim();localStorage.setItem(CONTACT_KEY,n);alert("Contacto guardado.");});
+$("contactForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!currentAdminUser||!sb())return;const n=$("contactPhone").value.trim();const {error}=await sb().from("profiles").update({phone:n}).eq("id",currentAdminUser.id);if(error){alert("Não foi possível guardar o WhatsApp: "+error.message);return;}localStorage.setItem(CONTACT_KEY,n);alert("WhatsApp guardado neste administrador.");});
 
 document.addEventListener("DOMContentLoaded",async()=>{
   const params=new URLSearchParams(location.search);
@@ -707,7 +732,7 @@ function applyAdminTheme(){
 }
 function setAdminTheme(theme){localStorage.setItem(ADMIN_THEME_KEY,theme);applyAdminTheme();openAdminSettingsTab("theme");}
 function toggleAdminSettings(){
-  const s=$("settingsSection"); if(!s||!isOwner())return;
+  const s=$("settingsSection"); if(!s||!currentAdminUser)return;
   s.classList.toggle("hidden");
   if(!s.classList.contains("hidden"))openAdminSettingsTab("theme");
   s.scrollIntoView({behavior:"smooth",block:"start"});
@@ -716,8 +741,8 @@ function openAdminSettingsTab(tab){
   const box=$("adminSettingsContent"); if(!box)return;
   const theme=localStorage.getItem(ADMIN_THEME_KEY)||"system";
   if(tab==="contact"){
-    box.innerHTML=`<div class="settings-tab"><h3>📱 Contacto e WhatsApp</h3><p>Este número será usado nos botões WhatsApp e Ligar.</p><form id="contactForm"><input id="contactPhone" placeholder="Número com indicativo, ex.: +258 84..." required value="${esc(localStorage.getItem(CONTACT_KEY)||"")}"><button type="submit">Guardar contacto</button></form></div>`;
-    $("contactForm")?.addEventListener("submit",e=>{e.preventDefault();localStorage.setItem(CONTACT_KEY,$("contactPhone").value.trim());alert("Contacto guardado.");});
+    box.innerHTML=`<div class="settings-tab"><h3>📱 Contacto e WhatsApp</h3><p>Este número fica associado aos anúncios que <strong>tu publicares</strong>.</p><form id="contactForm"><input id="contactPhone" placeholder="Número com indicativo, ex.: +258 84..." required value="${esc(localStorage.getItem(CONTACT_KEY)||"")}"><button type="submit">Guardar WhatsApp</button></form></div>`;
+    $("contactForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!currentAdminUser||!sb())return;const n=$("contactPhone").value.trim();const {error}=await sb().from("profiles").update({phone:n}).eq("id",currentAdminUser.id);if(error){alert("Não foi possível guardar o WhatsApp: "+error.message);return;}localStorage.setItem(CONTACT_KEY,n);alert("WhatsApp guardado neste administrador.");});
   }else if(tab==="site"){
     box.innerHTML=`<div class="settings-tab"><h3>🌐 Site e partilha</h3><p>Os links dos anúncios usam o formato público <strong>/carro/STOCK</strong>, sem expor <strong>detalhes.html</strong>.</p><p>Exemplo: <code>/carro/DRV1790408224947</code></p></div>`;
   }else{
