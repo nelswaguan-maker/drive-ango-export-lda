@@ -20,6 +20,7 @@ with check (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
   and public.admin_has_permission('publish')
+  and (split_part(name,'/',1) = auth.uid()::text or split_part(name,'/',1) = 'promotions')
 );
 
 drop policy if exists "Admins can update car images" on storage.objects;
@@ -30,12 +31,13 @@ using (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
   and public.admin_has_permission('edit')
+  and (
+    split_part(name,'/',1) = auth.uid()::text
+    or (split_part(name,'/',1) = 'promotions' and split_part(name,'/',2) = auth.uid()::text)
+    or exists (select 1 from public.drive_cars c where c.id = split_part(name,'/',2) and c.created_by = auth.uid())
+  )
 )
-with check (
-  bucket_id = 'car-images'
-  and public.is_current_user_admin()
-  and public.admin_has_permission('edit')
-);
+with check (bucket_id = 'car-images' and public.is_current_user_admin() and public.admin_has_permission('edit'));
 
 drop policy if exists "Admins can delete car images" on storage.objects;
 create policy "Admins can delete car images"
@@ -45,4 +47,9 @@ using (
   bucket_id = 'car-images'
   and public.is_current_user_admin()
   and public.admin_has_permission('delete')
+  and (
+    split_part(name,'/',1) = auth.uid()::text
+    or (split_part(name,'/',1) = 'promotions' and split_part(name,'/',2) = auth.uid()::text)
+    or exists (select 1 from public.drive_cars c where c.id = split_part(name,'/',2) and c.created_by = auth.uid())
+  )
 );

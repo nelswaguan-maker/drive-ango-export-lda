@@ -22,4 +22,4 @@ ATUALIZAÇÃO DESTA VERSÃO
 - Convites de administrador passam a expirar em 24 horas.
 - Convites pendentes antigos são eliminados; esta limpeza não remove carros, perfis, promoções ou outros dados.
 - Os 3 Proprietários Principais continuam acima dos administradores convidados.
-- SQL da atualização: atualizacao-fotos-20-recorte-convites-24h.sql
+- Na V4, esta atualização já está incorporada no supabase-schema.sql; não execute o SQL antigo separadamente.

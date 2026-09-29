@@ -24,4 +24,4 @@ O QUE AINDA NÃO FOI POSSÍVEL VERIFICAR
 Não tenho acesso aos logs da instância Supabase/Vercel neste ambiente. Portanto não é possível afirmar se alguém tentou explorar a falha no passado. Para isso é necessário consultar os logs do projeto Supabase e os registos de autenticação.
 
 IMPORTANTE
-Para uma instalação que já está em produção, execute primeiro supabase-security-hardening.sql no Supabase SQL Editor. O ZIP também contém a versão principal do schema já corrigida.
+Para esta V4, use o supabase-schema.sql como fonte única das regras de administração. Os SQL antigos de hardening/proprietários foram neutralizados para não reintroduzirem a regra antiga de proprietário único.

@@ -1,4 +1,20 @@
 -- DRIVE CARS — SUPABASE / ADMINISTRAÇÃO
+-- V4: lista única dos 3 Proprietários Principais.
+create or replace function public.is_owner_email(p_email text)
+returns boolean
+language sql
+immutable
+set search_path = public
+as $$
+  select lower(trim(coalesce(p_email,''))) in (
+    lower('nelswaguan@gmail.com'),
+    lower('editojosejoaquim812@gmail.com'),
+    lower('jojomilagre@gmail.com')
+  );
+$$;
+revoke all on function public.is_owner_email(text) from public;
+grant execute on function public.is_owner_email(text) to anon, authenticated;
+
 -- Execute este ficheiro inteiro no Supabase > SQL Editor.
 -- Este SQL substitui o fluxo antigo de convites guardados apenas no localStorage.
 
@@ -43,7 +59,7 @@ create table if not exists public.admin_invites (
   created_by uuid not null references auth.users(id) on delete cascade,
   accepted_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null default (now() + interval '7 days'),
+  expires_at timestamptz not null default (now() + interval '24 hours'),
   accepted_at timestamptz
 );
 alter table public.admin_invites enable row level security;
@@ -61,7 +77,7 @@ begin
     coalesce(new.raw_user_meta_data->>'name','Cliente'),
     new.raw_user_meta_data->>'phone',
     new.email,
-    case when lower(coalesce(new.email,''))=lower('nelswaguan@gmail.com') then 'admin' else 'client' end,
+    case when public.is_owner_email(new.email) then 'admin' else 'client' end,
     false
   )
   on conflict (id) do update set
@@ -71,7 +87,7 @@ begin
     privacy_accepted_at=coalesce(excluded.privacy_accepted_at, public.profiles.privacy_accepted_at),
     terms_accepted_at=coalesce(excluded.terms_accepted_at, public.profiles.terms_accepted_at),
     role=case
-      when lower(coalesce(excluded.email,''))=lower('nelswaguan@gmail.com') then 'admin'
+      when public.is_owner_email(excluded.email) then 'admin'
       else public.profiles.role
     end;
   return new;
@@ -95,12 +111,12 @@ create trigger profiles_updated_at
 before update on public.profiles
 for each row execute procedure public.set_profile_updated_at();
 
--- Administrador principal.
+-- Os 3 Proprietários Principais são administradores.
 update public.profiles p
 set role='admin', blocked=false, updated_at=now()
 where p.id in (
   select u.id from auth.users u
-  where lower(u.email)=lower('nelswaguan@gmail.com')
+  where public.is_owner_email(u.email)
 );
 
 -- Função usada pelo site para saber se a sessão é administradora.
@@ -120,7 +136,7 @@ as $$
   or exists (
     select 1 from auth.users u
     where u.id=auth.uid()
-      and lower(u.email)=lower('nelswaguan@gmail.com')
+      and public.is_owner_email(u.email)
   );
 $$;
 revoke all on function public.is_current_user_admin() from public;
@@ -161,18 +177,25 @@ security definer
 set search_path = public, auth
 as $$
 begin
-  if lower(coalesce((select email from auth.users where id=auth.uid()),'')) <> lower('nelswaguan@gmail.com') then
+  if not public.is_owner_email((select email from auth.users where id=auth.uid())) then
     if tg_op = 'INSERT' then
       new.role := 'client';
       new.blocked := false;
       new.email := (select email from auth.users where id = new.id);
     elsif tg_op = 'UPDATE' then
-      new.role := old.role;
-      new.blocked := old.blocked;
-      new.email := old.email;
+      if current_setting('app.admin_invite_acceptance', true) = 'true'
+         and auth.uid() = new.id then
+        new.role := 'admin';
+        new.blocked := false;
+        new.email := old.email;
+      else
+        new.role := old.role;
+        new.blocked := old.blocked;
+        new.email := old.email;
+      end if;
     end if;
   else
-    if lower(coalesce((select email from auth.users where id = new.id),'')) = lower('nelswaguan@gmail.com') then
+    if public.is_owner_email((select email from auth.users where id = new.id)) then
       new.role := 'admin';
       new.blocked := false;
       new.email := (select email from auth.users where id = new.id);
@@ -215,7 +238,7 @@ begin
   owner_ok := exists(
     select 1 from auth.users
     where id=auth.uid()
-      and lower(email)=lower('nelswaguan@gmail.com')
+      and public.is_owner_email(email)
   );
   if not owner_ok then
     raise exception 'Apenas o Proprietário Principal pode criar convites';
@@ -226,7 +249,7 @@ begin
   end if;
 
   new_token := gen_random_uuid();
-  new_exp := now()+interval '7 days';
+  new_exp := now()+interval '24 hours';
 
   insert into public.admin_invites(token,phone,permissions,created_by,expires_at)
   values(new_token,trim(p_phone),coalesce(p_permissions,'{}'::jsonb),auth.uid(),new_exp);
@@ -278,7 +301,7 @@ begin
 
   select email into target_email from auth.users where id=target_id;
 
-  if lower(coalesce(target_email,''))=lower('nelswaguan@gmail.com') then
+  if public.is_owner_email(target_email) then
     -- O proprietário já é administrador.
     update public.admin_invites
       set status='accepted',accepted_by=target_id,accepted_at=now()
@@ -287,6 +310,10 @@ begin
   end if;
 
   perm := inv.permissions;
+
+  -- Marcador local de transação: permite que apenas este fluxo legítimo
+  -- passe pelo trigger de proteção de privilégios.
+  perform set_config('app.admin_invite_acceptance','true',true);
 
   update public.profiles
   set role='admin',blocked=false,updated_at=now()
@@ -325,10 +352,10 @@ security definer
 set search_path = public, auth
 as $$
 begin
-  if not exists(select 1 from auth.users where id=auth.uid() and lower(email)=lower('nelswaguan@gmail.com')) then
+  if not exists(select 1 from auth.users where id=auth.uid() and public.is_owner_email(email)) then
     raise exception 'Apenas o Proprietário Principal pode bloquear administradores';
   end if;
-  if exists(select 1 from auth.users where id=p_user_id and lower(email)=lower('nelswaguan@gmail.com')) then
+  if exists(select 1 from auth.users where id=p_user_id and public.is_owner_email(email)) then
     raise exception 'O proprietário principal não pode ser bloqueado';
   end if;
   update public.profiles set blocked=p_blocked,updated_at=now()
@@ -347,10 +374,10 @@ security definer
 set search_path = public, auth
 as $$
 begin
-  if not exists(select 1 from auth.users where id=auth.uid() and lower(email)=lower('nelswaguan@gmail.com')) then
+  if not exists(select 1 from auth.users where id=auth.uid() and public.is_owner_email(email)) then
     raise exception 'Apenas o Proprietário Principal pode remover administradores';
   end if;
-  if exists(select 1 from auth.users where id=p_user_id and lower(email)=lower('nelswaguan@gmail.com')) then
+  if exists(select 1 from auth.users where id=p_user_id and public.is_owner_email(email)) then
     raise exception 'O proprietário principal não pode ser removido';
   end if;
   update public.profiles set role='client',blocked=false,updated_at=now()
@@ -369,7 +396,7 @@ on public.admin_invites for select to authenticated
 using (
   exists(
     select 1 from auth.users
-    where id=auth.uid() and lower(email)=lower('nelswaguan@gmail.com')
+    where id=auth.uid() and public.is_owner_email(email)
   )
 );
 
@@ -440,7 +467,8 @@ for each row execute function public.drive_cars_set_updated_at();
 
 drop policy if exists "Public can read drive cars" on public.drive_cars;
 create policy "Public can read drive cars" on public.drive_cars
-for select to anon, authenticated using (true);
+for select to anon, authenticated
+using (published = true or public.is_current_user_admin());
 
 -- Acesso de escrita respeita as permissões do administrador convidado.
 create or replace function public.admin_has_permission(p_permission text)
@@ -450,7 +478,7 @@ security definer
 set search_path = public, auth
 stable
 as $$
-  select lower(coalesce((select email from auth.users where id=auth.uid()),''))=lower('nelswaguan@gmail.com')
+  select public.is_owner_email((select email from auth.users where id=auth.uid()))
     or exists (
       select 1 from public.profiles p
       join public.admin_permissions ap on ap.user_id=p.id
@@ -474,7 +502,7 @@ security definer
 set search_path = public, auth
 as $$
 declare
-  owner_ok boolean := lower(coalesce((select email from auth.users where id=auth.uid()),''))=lower('nelswaguan@gmail.com');
+  owner_ok boolean := public.is_owner_email((select email from auth.users where id=auth.uid()));
   edit_ok boolean := public.admin_has_permission('edit');
   status_ok boolean := public.admin_has_permission('manage_status');
   publish_ok boolean := public.admin_has_permission('publish');
@@ -482,6 +510,7 @@ begin
   if owner_ok then return new; end if;
   if tg_op = 'INSERT' then
     if not publish_ok then raise exception 'Sem permissão para publicar anúncios'; end if;
+    new.created_by := auth.uid();
     return new;
   end if;
   if tg_op = 'UPDATE' then
