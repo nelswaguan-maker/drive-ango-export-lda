@@ -142,6 +142,26 @@ $$;
 revoke all on function public.is_current_user_admin() from public;
 grant execute on function public.is_current_user_admin() to authenticated;
 
+-- Contactos gerais do site (independentes do contacto guardado em cada anúncio).
+create table if not exists public.site_settings (
+  id smallint primary key default 1 check (id=1),
+  whatsapp text not null default '',
+  phone text not null default '',
+  email text not null default '',
+  updated_at timestamptz not null default now()
+);
+alter table public.site_settings enable row level security;
+drop policy if exists "Public can read site contacts" on public.site_settings;
+create policy "Public can read site contacts" on public.site_settings
+for select to anon, authenticated using (true);
+drop policy if exists "Admins can insert site contacts" on public.site_settings;
+create policy "Admins can insert site contacts" on public.site_settings
+for insert to authenticated with check (public.is_current_user_admin());
+drop policy if exists "Admins can update site contacts" on public.site_settings;
+create policy "Admins can update site contacts" on public.site_settings
+for update to authenticated using (public.is_current_user_admin()) with check (public.is_current_user_admin());
+insert into public.site_settings (id) values (1) on conflict (id) do nothing;
+
 -- Políticas de perfis.
 drop policy if exists "Clientes podem ver o próprio perfil" on public.profiles;
 drop policy if exists "Clientes podem criar o próprio perfil" on public.profiles;
@@ -578,3 +598,10 @@ grant execute on function public.increment_car_view(text) to anon, authenticated
 alter table if exists public.drive_cars add column if not exists fuel text not null default '';
 alter table if exists public.drive_cars add column if not exists arrival_port text not null default '';
 alter table if exists public.drive_cars add column if not exists publisher_phone text not null default '';
+
+
+drop policy if exists "Admin can update site contacts" on public.site_settings;
+create policy "Admin can update site contacts" on public.site_settings
+for all to authenticated
+using (public.is_current_user_admin())
+with check (public.is_current_user_admin());

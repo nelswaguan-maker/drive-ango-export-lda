@@ -1,6 +1,8 @@
 const KEY="driveCars";
 const FAV_KEY="driveFavs";
 const CONTACT_KEY="driveContact";
+const SITE_CONTACT_KEY="driveSiteContact";
+let generalSiteContact={whatsapp:"",phone:"",email:""};
 
 const seedCars=[
 {id:"DRV001",brand:"Toyota",model:"RAV4",body:"SUV",price:18500,year:2022,km:23500,discount:8,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=80",status:"available",views:0,stock:""},
@@ -112,6 +114,20 @@ function statusHTML(c){
   return '<span class="status-badge available">DISPONÍVEL</span>';
 }
 function contactNumber(){return localStorage.getItem(CONTACT_KEY)||"";}
+function generalContactNumber(){return String(generalSiteContact.whatsapp||generalSiteContact.phone||"");}
+async function loadGeneralSiteContact(){
+  let data=null;
+  try{
+    if(window.driveSupabase){
+      const {data:row,error}=await window.driveSupabase.from("site_settings").select("whatsapp,phone,email").eq("id",1).maybeSingle();
+      if(!error&&row) data=row;
+    }
+  }catch(e){console.warn("Contacto geral:",e);}
+  if(!data){try{data=JSON.parse(localStorage.getItem(SITE_CONTACT_KEY)||"null")}catch(e){data=null;}}
+  generalSiteContact={whatsapp:String(data?.whatsapp||""),phone:String(data?.phone||""),email:String(data?.email||"")};
+  updateFooterContact();
+  return generalSiteContact;
+}
 function carContactNumber(c){return String(c?.publisherPhone||c?.publisher_phone||contactNumber()||"");}
 function whatsappHref(c){const n=carContactNumber(c).replace(/\D/g,"");return n?`https://wa.me/${n}?text=${encodeURIComponent(`Olá, tenho interesse no ${c.brand} ${c.model} (Stock ${c.stock||c.id}).`)}`:"#";}
 function callHref(c){const n=carContactNumber(c).replace(/\D/g,"");return n?`tel:+${n}`:"#";}
@@ -185,13 +201,54 @@ function renderPopular(){
     </article>`;
   }).join(""): `<p>Ainda não há modelos visualizados.</p>`;
 }
+function renderAvailableModels(expanded=false){
+  const box=document.getElementById("availableModels");
+  if(!box)return;
+  const groups=new Map();
+  cars.forEach(c=>{
+    if(!c || c.published===false || c.status==="sold") return;
+    const brand=resolvedCarBrand(c), model=normalizeModelName(brand,c.model);
+    if(!brand||!model)return;
+    const key=getModelKey(brand,model);
+    if(!groups.has(key)) groups.set(key,{brand,model,count:0,views:0,image:c.image||c.images?.[0]||""});
+    const g=groups.get(key); g.count++; g.views+=Number(c.views||0); if(!g.image)g.image=c.image||c.images?.[0]||"";
+  });
+  const list=[...groups.values()].sort((a,b)=>b.count-a.count||b.views-a.views||a.brand.localeCompare(b.brand,"pt")||a.model.localeCompare(b.model,"pt"));
+  const limit=expanded?list.length:8;
+  if(!list.length){box.innerHTML='<p class="empty-models">Nenhum carro disponível neste momento.</p>';return;}
+  box.innerHTML=list.slice(0,limit).map(g=>{
+    const href=`modelos.html?${new URLSearchParams({brand:g.brand,model:g.model}).toString()}`;
+    return `<a class="available-model-card" href="${esc(href)}"><img src="${esc(g.image||"")}" alt="${esc(g.brand+' '+g.model)}" loading="lazy"><div><small>${esc(g.brand)}</small><strong>${esc(g.model)}</strong><span>${g.count} ${g.count===1?'carro disponível':'carros disponíveis'}</span></div><i class="fa-solid fa-chevron-right"></i></a>`;
+  }).join("");
+  const more=document.getElementById("availableModelsMore");
+  if(more){more.style.display=list.length>8?(expanded?"block":"block"):"none";more.innerHTML=expanded?'Mostrar menos <i class="fa-solid fa-chevron-up"></i>':'Mostrar mais modelos <i class="fa-solid fa-chevron-down"></i>';}
+}
+function toggleAvailableModels(){
+  const box=document.getElementById("availableModels");
+  renderAvailableModels(box?.dataset.expanded!="1");
+  if(box)box.dataset.expanded=box.dataset.expanded==="1"?"0":"1";
+}
+
+function renderPriceCounts(){
+  const ranges=[[0,1000],[1001,2000],[2001,3000],[3001,4000],[4001,5000],[5001,Infinity]];
+  ranges.forEach((r,i)=>{
+    const el=document.getElementById(`pc${i}`); if(!el)return;
+    const n=cars.filter(c=>c?.published!==false&&c?.status!=="sold"&&Number(c.price)>=r[0]&&Number(c.price)<=r[1]).length;
+    el.textContent=`(${n.toLocaleString('pt-MZ')})`;
+  });
+}
+
 function renderRecent(){
-  // A página inicial não mostra carros individuais abaixo dos logotipos.
-  // Os carros são acessados por Marca → Modelo → Carros do modelo.
+  // A página inicial não mostra anúncios individuais. Mostra apenas modelos agrupados.
   const recent=document.getElementById("recentCars");
   if(recent) recent.innerHTML="";
-  // Compatibilidade com versões antigas que ainda tenham uma grelha de resultados
-  // na página inicial: mantê-la oculta até o utilizador aplicar um filtro.
+  renderAvailableModels(false);
+  renderPriceCounts();
+  const total=document.getElementById("stockTotal");
+  if(total){
+    const n=cars.filter(c=>c?.published!==false&&c?.status!=="sold").length;
+    total.textContent=`${n.toLocaleString('pt-MZ')} ~ Carros disponíveis`;
+  }
   const homeResults=document.getElementById("results");
   if(homeResults) homeResults.classList.add("hidden-home-results");
 }
@@ -463,10 +520,17 @@ async function clientLogout(){
 }
 function updateFooterContact(){
   const el=document.getElementById("footerContact");if(!el)return;
-  const n=contactNumber();
-  if(!n){el.innerHTML="<span>WhatsApp / Ligar: configure o contacto no painel Admin.</span>";return;}
-  const digits=n.replace(/[^0-9]/g,"");
-  el.innerHTML=`<a class="footer-contact-link" href="https://wa.me/${digits}" target="_blank" rel="noopener noreferrer">WhatsApp / Ligar: ${esc(n)}</a>`;
+  const wa=String(generalSiteContact.whatsapp||"").trim();
+  const phone=String(generalSiteContact.phone||wa||"").trim();
+  const email=String(generalSiteContact.email||"").trim();
+  if(!wa&&!phone&&!email){el.innerHTML="<span>WhatsApp / Ligar: configure o contacto no painel Admin.</span>";return;}
+  const waDigits=wa.replace(/[^0-9]/g,"");
+  const phoneDigits=phone.replace(/[^0-9]/g,"");
+  const links=[];
+  if(waDigits) links.push(`<a class="footer-contact-link" href="https://wa.me/${waDigits}" target="_blank" rel="noopener noreferrer">WhatsApp: ${esc(wa)}</a>`);
+  if(phoneDigits) links.push(`<a class="footer-contact-link" href="tel:+${phoneDigits}">Ligar: ${esc(phone)}</a>`);
+  if(email) links.push(`<a class="footer-contact-link" href="mailto:${encodeURIComponent(email)}">Email: ${esc(email)}</a>`);
+  el.innerHTML=links.join(" · ");
 }
 function updateClientHeader(user){currentClientUser=user||null;const el=document.getElementById("clientLabel");if(el)el.textContent=user?(user.user_metadata?.name||user.email||"Meu perfil"):"Login";}
 
@@ -581,22 +645,32 @@ async function clientLogin(e){
     // A sessão só é considerada válida depois desta resposta do Supabase.
     const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
     if(error || !data?.user){
-      alert("Email ou senha incorretos.");
+      const msg=String(error?.message||"Não foi possível autenticar esta conta.");
+      const lower=msg.toLowerCase();
+      if(lower.includes("email not confirmed")||lower.includes("email não confirmado"))
+        alert("Este email ainda não foi confirmado no Supabase. Confirma o email recebido e tenta novamente.");
+      else if(lower.includes("invalid login credentials"))
+        alert("Email ou senha incorretos. Confirma os dados e tenta novamente.");
+      else
+        alert("Não foi possível entrar: "+msg);
       return;
     }
     const user=data.user;
-    if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(user.email||"").trim().toLowerCase()))
-      localStorage.removeItem("drivePendingAdminInvite");
-
-    // Primeiro reconhecer a conta, depois verificar perfil e função.
-    const profile=await getClientProfile(user);
     currentClientUser=user;
-    currentClientProfile=profile;
+    currentClientProfile=await getClientProfile(user);
+
+    // Convites pendentes são aceites depois da autenticação, nunca durante o preenchimento.
+    const owner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(user.email||"").trim().toLowerCase());
+    if(owner) localStorage.removeItem("drivePendingAdminInvite");
+    else await claimPendingAdminInvite();
+
     updateClientHeader(user);
     await refreshAdminState(user);
+    const accepted=await requireLegalConsent(user);
+    if(!accepted)return;
 
     // Só agora mostramos a confirmação; nunca antes da autenticação.
-    showClientAccount(profile,"Login realizado com sucesso!");
+    showClientAccount(currentClientProfile,"Login realizado com sucesso!");
   }finally{
     clientLoginBusy=false;
     if(button){button.disabled=false;button.textContent="Entrar";}
@@ -698,6 +772,11 @@ async function initClientModal(){
 
 document.addEventListener("DOMContentLoaded",async()=>{
   applySavedTheme();updateNotificationCount();
+
+  // Inicializa a autenticação ANTES do carregamento do catálogo.
+  // O botão Login não pode ficar dependente de uma consulta de carros/RLS/rede.
+  clientAuthCheckPromise=initClientModal();
+
   await loadPublicCars();
   subscribePublicCars();
   const quick=document.getElementById("quickSearch");
@@ -708,9 +787,8 @@ document.addEventListener("DOMContentLoaded",async()=>{
   }
   document.addEventListener("click",e=>{if(!e.target.closest(".hero-search"))hideSearchSuggestions();});
   renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();
-  clientAuthCheckPromise=initClientModal();
   await clientAuthCheckPromise;
-  updateFooterContact();
+  await loadGeneralSiteContact();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();
   if(params.get("openSignup")==="1"){openClientModal();showClientSignup();}
@@ -740,6 +818,7 @@ document.addEventListener("click", (event) => {
   button.setAttribute("aria-label", showing ? "Ocultar senha" : "Mostrar senha");
 });
 
+window.addEventListener("driveSiteContactChanged",e=>{generalSiteContact={...generalSiteContact,...(e.detail||{})};updateFooterContact();});
 window.addEventListener("driveCurrencyChanged",()=>{updatePriceFilterText();renderPopular();renderRecent();renderResults(filtered());});
 window.addEventListener("driveExchangeUpdated",()=>{updatePriceFilterText();renderRecent();renderResults(filtered());});
 

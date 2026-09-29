@@ -96,7 +96,16 @@ async function loginAdmin(event){
   if(button){button.disabled=true;button.textContent="A entrar...";}
   try{
   const {data,error}=await sb().auth.signInWithPassword({email,password:pass});
-  if(error){$("loginMsg").textContent="Email ou senha incorretos.";return;}
+  if(error){
+    const msg=String(error.message||"Não foi possível autenticar esta conta.");
+    const lower=msg.toLowerCase();
+    $("loginMsg").textContent=lower.includes("email not confirmed")||lower.includes("email não confirmado")
+      ? "Este email ainda não foi confirmado no Supabase. Confirma o email e tenta novamente."
+      : lower.includes("invalid login credentials")
+        ? "Email ou senha incorretos."
+        : "Não foi possível entrar: "+msg;
+    return;
+  }
   currentAdminUser=data.user;
   const signedEmail=String(data.user?.email||"").trim().toLowerCase();
   const owner=["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(signedEmail);
@@ -597,7 +606,18 @@ document.addEventListener("DOMContentLoaded",async()=>{
   }
 
   currentAdminUser=await window.requireAdmin();
-  if(currentAdminUser) await init();
+  if(currentAdminUser){
+    await init();
+  }else{
+    // Sem sessão, mostrar claramente o login do painel.
+    // A autenticação só acontece quando o formulário for enviado.
+    $("loginScreen")?.classList.remove("hidden");
+    $("panel")?.classList.add("hidden");
+    $("setupBox")?.classList.add("hidden");
+    $("inviteAccess")?.classList.add("hidden");
+    $("loginBox")?.classList.remove("hidden");
+    if($("loginMsg") && !$("loginMsg").textContent) $("loginMsg").textContent="Entra com a tua conta de administrador.";
+  }
   await tryPendingInvite();
   setInterval(async()=>{if(currentAdminUser){await syncCarsFromBackend();draw();drawAdmins();}},5000);
 });
@@ -737,12 +757,45 @@ function toggleAdminSettings(){
   if(!s.classList.contains("hidden"))openAdminSettingsTab("theme");
   s.scrollIntoView({behavior:"smooth",block:"start"});
 }
-function openAdminSettingsTab(tab){
+async function loadGeneralSiteContact(){
+  let data=null;
+  try{
+    if(sb()){
+      const res=await sb().from("site_settings").select("id,whatsapp,phone,email").eq("id",1).maybeSingle();
+      if(!res.error) data=res.data;
+    }
+  }catch(e){console.warn("Contacto geral:",e);}
+  if(data){
+    if($("siteWhatsapp")) $("siteWhatsapp").value=data.whatsapp||"";
+    if($("sitePhone")) $("sitePhone").value=data.phone||"";
+    if($("siteEmail")) $("siteEmail").value=data.email||"";
+  }
+  return data||{};
+}
+
+async function saveGeneralSiteContact(){
+  if(!currentAdminUser||!sb())return;
+  const payload={whatsapp:$("siteWhatsapp")?.value.trim()||"",phone:$("sitePhone")?.value.trim()||"",email:$("siteEmail")?.value.trim()||"",updated_at:new Date().toISOString()};
+  const {error}=await sb().from("site_settings").upsert({id:1,...payload},{onConflict:"id"});
+  if(error){alert("Não foi possível guardar os contactos gerais: "+error.message);return;}
+  localStorage.setItem("driveSiteContact",JSON.stringify(payload));
+  window.dispatchEvent(new CustomEvent("driveSiteContactChanged",{detail:payload}));
+  alert("Contactos gerais guardados com sucesso.");
+}
+
+async function openAdminSettingsTab(tab){
   const box=$("adminSettingsContent"); if(!box)return;
   const theme=localStorage.getItem(ADMIN_THEME_KEY)||"system";
   if(tab==="contact"){
-    box.innerHTML=`<div class="settings-tab"><h3>📱 Contacto e WhatsApp</h3><p>Este número fica associado aos anúncios que <strong>tu publicares</strong>.</p><form id="contactForm"><input id="contactPhone" placeholder="Número com indicativo, ex.: +258 84..." required value="${esc(localStorage.getItem(CONTACT_KEY)||"")}"><button type="submit">Guardar WhatsApp</button></form></div>`;
-    $("contactForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!currentAdminUser||!sb())return;const n=$("contactPhone").value.trim();const {error}=await sb().from("profiles").update({phone:n}).eq("id",currentAdminUser.id);if(error){alert("Não foi possível guardar o WhatsApp: "+error.message);return;}localStorage.setItem(CONTACT_KEY,n);alert("WhatsApp guardado neste administrador.");});
+    box.innerHTML=`<div class="settings-tab"><h3>📱 Contactos</h3>
+      <h4>Contacto deste administrador</h4><p>Este número fica associado aos anúncios que <strong>tu publicares</strong>.</p>
+      <form id="contactForm"><input id="contactPhone" placeholder="WhatsApp do administrador, ex.: +258 84..." required value="${esc(localStorage.getItem(CONTACT_KEY)||"")}"><button type="submit">Guardar WhatsApp do administrador</button></form>
+      <hr><h4>Contacto geral do Drive Ango</h4><p>Este contacto aparece no rodapé para todos os visitantes. <strong>Não altera o número guardado nos carros já publicados.</strong></p>
+      <form id="siteContactForm"><input id="siteWhatsapp" type="tel" placeholder="WhatsApp geral, ex.: +258 84..."><input id="sitePhone" type="tel" placeholder="Telefone geral, ex.: +258 21..."><input id="siteEmail" type="email" placeholder="Email geral"><button type="submit">Guardar contactos gerais</button></form></div>`;
+    await loadAdminContact();
+    await loadGeneralSiteContact();
+    $("contactForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!currentAdminUser||!sb())return;const n=$("contactPhone").value.trim();const {error}=await sb().from("profiles").update({phone:n}).eq("id",currentAdminUser.id);if(error){alert("Não foi possível guardar o WhatsApp: "+error.message);return;}localStorage.setItem(CONTACT_KEY,n);alert("WhatsApp deste administrador guardado.");});
+    $("siteContactForm")?.addEventListener("submit",async e=>{e.preventDefault();await saveGeneralSiteContact();});
   }else if(tab==="site"){
     box.innerHTML=`<div class="settings-tab"><h3>🌐 Site e partilha</h3><p>Os links dos anúncios usam o formato público <strong>/carro/STOCK</strong>, sem expor <strong>detalhes.html</strong>.</p><p>Exemplo: <code>/carro/DRV1790408224947</code></p></div>`;
   }else{

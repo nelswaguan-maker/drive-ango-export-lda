@@ -103,12 +103,12 @@
 <section id="precos" class="content-section">
   <h2 class="red-title">Procurar Por Preço Do Veículo</h2>
   <div class="choice-grid">
-    <button onclick="setPrice(0,1000)">Abaixo de $1,000<br><small id="pc0">(270)</small></button>
-    <button onclick="setPrice(1001,2000)">$1,001 - $2,000<br><small>(120)</small></button>
-    <button onclick="setPrice(2001,3000)">$2,001 - $3,000<br><small>(95)</small></button>
-    <button onclick="setPrice(3001,4000)">$3,001 - $4,000<br><small>(74)</small></button>
-    <button onclick="setPrice(4001,5000)">$4,001 - $5,000<br><small>(58)</small></button>
-    <button onclick="setPrice(5001,9999999)">Acima de $5,001<br><small>(460)</small></button>
+    <button onclick="setPrice(0,1000)">Abaixo de $1,000<br><small id="pc0">(0)</small></button>
+    <button onclick="setPrice(1001,2000)">$1,001 - $2,000<br><small id="pc1">(0)</small></button>
+    <button onclick="setPrice(2001,3000)">$2,001 - $3,000<br><small id="pc2">(0)</small></button>
+    <button onclick="setPrice(3001,4000)">$3,001 - $4,000<br><small id="pc3">(0)</small></button>
+    <button onclick="setPrice(4001,5000)">$4,001 - $5,000<br><small id="pc4">(0)</small></button>
+    <button onclick="setPrice(5001,9999999)">Acima de $5,001<br><small id="pc5">(0)</small></button>
   </div>
 </section>
 
@@ -128,6 +128,13 @@
   <h2 class="red-title">Procurar Tipo De Carroceria</h2>
   <div id="bodyGrid" class="body-grid"></div>
   <button class="show-more" onclick="showMore('body')">Mostrar mais <i class="fa-solid fa-chevron-down"></i></button>
+</section>
+
+<section id="disponiveis" class="content-section available-section">
+  <h2 class="red-title">Carros disponíveis</h2>
+  <p class="section-note">Escolha um modelo para ver os veículos disponíveis. Os anúncios não aparecem todos nesta página.</p>
+  <div id="availableModels" class="available-model-grid"></div>
+  <button id="availableModelsMore" class="show-more" type="button" onclick="toggleAvailableModels()" style="display:none">Mostrar mais modelos <i class="fa-solid fa-chevron-down"></i></button>
 </section>
 
 <section id="modelos" class="content-section">
