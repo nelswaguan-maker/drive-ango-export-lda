@@ -12,7 +12,7 @@
 <header class="header">
   <a class="logo" href="index.html"><span>DRIVE</span><small>GLOBAL CAR MARKET</small></a>
   <nav class="top-actions">
-    <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Conecte-se</span></a>
+    <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;" aria-label="Abrir login"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Login</span></a>
     <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span><b id="favCount">0</b></a>
     <button class="notification-btn" type="button" onclick="openNotifications()" aria-label="Notificações"><i class="fa-regular fa-bell"></i><span>Notificações</span><b id="notificationCount" style="display:none">0</b></button>
     <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
@@ -223,8 +223,8 @@
       <p>Já tens conta? <button class="text-btn" onclick="showClientLogin()" type="button">Entrar</button></p>
     </div>
     <div id="clientAccountView" style="display:none">
-      <h2>Minha conta</h2>
-      <p id="clientAccountInfo">Conta ativa.</p>
+      <h2>Login realizado com sucesso!</h2>
+      <p id="clientAccountInfo">Conta verificada.</p>
       <a class="profile-open-btn" href="perfil.html">Ver meu perfil</a>
       <a id="adminAccountLink" class="profile-open-btn admin-account-link" href="admin.html" style="display:none"><i class="fa-solid fa-shield-halved"></i> Administração</a>
       <button onclick="clientLogout()">Terminar sessão</button>
@@ -238,7 +238,7 @@
     <details><summary>Sobre Nós</summary><a href="#">Sobre o Drive</a><a href="#">Como funciona</a></details>
     <details><summary>Consulta</summary><a href="#">Pedido de cotação</a><a href="#">Envio</a></details>
   </div>
-  <div class="social"><h3>Conecte-se conosco</h3><p id="footerContact">WhatsApp / Ligar: configure o contacto no painel Admin.</p><div><i class="fa-brands fa-youtube"></i><i class="fa-brands fa-facebook"></i><i class="fa-brands fa-instagram"></i></div></div>
+  <div class="social"><h3>Conecte-se conosco</h3><p id="footerContact"><span>WhatsApp / Ligar: configure o contacto no painel Admin.</span></p><div><i class="fa-brands fa-youtube"></i><i class="fa-brands fa-facebook"></i><i class="fa-brands fa-instagram"></i></div></div>
   <div class="footer-bottom">
     <p>Notícias do DRIVE ↗</p><p>Boletim de Notícias ↗</p>
     <label>Escritório Global</label><select><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>

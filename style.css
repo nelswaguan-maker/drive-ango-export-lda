@@ -124,3 +124,7 @@ body{zoom:.8}
   .model-selection-results .car-grid{grid-template-columns:1fr;gap:20px}
   .model-selection-results .car-card img{height:250px}
 }
+
+/* V4.2.1 — contactos e login */
+.footer-contact-link{color:inherit;text-decoration:none;font-weight:600;display:inline-block}
+.footer-contact-link:hover{text-decoration:underline}

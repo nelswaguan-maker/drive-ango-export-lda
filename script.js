@@ -402,15 +402,30 @@ function updateCountdowns(){
 let currentClientUser=null;
 let currentClientIsAdmin=false;
 let currentClientProfile=null;
+let clientAuthStateReady=false;
+let clientAuthCheckPromise=null;
 
 function openClientModal(){
-  document.getElementById("clientModal").style.display="block";
+  const modal=document.getElementById("clientModal");
+  if(!modal)return;
+  modal.style.display="block";
   if(currentClientUser) showClientAccount(currentClientProfile);
   else if(window.location.hash.includes("type=recovery") || new URLSearchParams(location.search).get("reset")==="1") showClientReset();
   else showClientLogin();
+  // Ao tocar em "Login", a tela de login fica pronta imediatamente.
+  if(!currentClientUser && !window.location.hash.includes("type=recovery")){
+    requestAnimationFrame(()=>document.getElementById("loginEmail")?.focus());
+  }
 }
 function closeClientModal(){document.getElementById("clientModal").style.display="none";}
-function handleClientHeaderClick(event){event.preventDefault();if(currentClientUser){location.href="perfil.html";}else{openClientModal();}}
+async function handleClientHeaderClick(event){
+  event.preventDefault();
+  // Nunca abrir a conta/perfil antes de terminar a verificação da sessão.
+  if(clientAuthCheckPromise){ await clientAuthCheckPromise; }
+  if(!clientAuthStateReady){ return; }
+  if(currentClientUser){ location.href="perfil.html"; return; }
+  openClientModal();
+}
 
 function hideClientViews(){
   ["clientLoginView","clientSignupView","clientForgotView","clientResetView","clientAccountView"].forEach(id=>{
@@ -428,11 +443,16 @@ function showForgotPassword(){
 }
 function showClientReset(){hideClientViews();document.getElementById("clientResetView").style.display="block";}
 
-function showClientAccount(profile){
+function showClientAccount(profile, successMessage="Login realizado com sucesso!"){
   hideClientViews();
   document.getElementById("clientAccountView").style.display="block";
+  const title=document.querySelector("#clientAccountView h2");
+  if(title)title.textContent=successMessage;
   const el=document.getElementById("clientAccountInfo");
-  if(el)el.textContent=`Conta ativa: ${profile?.name||"Cliente"}${profile?.phone?" · "+profile.phone:""}`;
+  if(el){
+    const role=currentClientIsAdmin?"Administrador":"Cliente";
+    el.innerHTML=`<strong>Conta verificada</strong><br>Utilizador: ${esc(profile?.name||profile?.email||"Cliente")}<br>Função: <strong>${role}</strong>`;
+  }
   const adminLink=document.getElementById("adminAccountLink");
   if(adminLink)adminLink.style.display=currentClientIsAdmin?"inline-flex":"none";
 }
@@ -443,9 +463,12 @@ async function clientLogout(){
 }
 function updateFooterContact(){
   const el=document.getElementById("footerContact");if(!el)return;
-  const n=contactNumber();el.textContent=n?`WhatsApp / Ligar: ${n}`:"WhatsApp / Ligar: cada anúncio usa o contacto do administrador que o publicou.";
+  const n=contactNumber();
+  if(!n){el.innerHTML="<span>WhatsApp / Ligar: configure o contacto no painel Admin.</span>";return;}
+  const digits=n.replace(/[^0-9]/g,"");
+  el.innerHTML=`<a class="footer-contact-link" href="https://wa.me/${digits}" target="_blank" rel="noopener noreferrer">WhatsApp / Ligar: ${esc(n)}</a>`;
 }
-function updateClientHeader(user){currentClientUser=user||null;const el=document.getElementById("clientLabel");if(el)el.textContent=user?(user.user_metadata?.name||user.email||"Meu perfil"):"Conecte-se";}
+function updateClientHeader(user){currentClientUser=user||null;const el=document.getElementById("clientLabel");if(el)el.textContent=user?(user.user_metadata?.name||user.email||"Meu perfil"):"Login";}
 
 async function getClientProfile(user){
   if(!user)return null;
@@ -548,29 +571,37 @@ async function clientLogin(e){
   e.preventDefault();
   if(clientLoginBusy)return;
   if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
-  const form=e.currentTarget;
   const button=document.getElementById("clientLoginSubmit");
-  const email=document.getElementById("loginEmail").value.trim().toLowerCase(),pass=document.getElementById("loginPass").value;
+  const email=document.getElementById("loginEmail").value.trim().toLowerCase();
+  const pass=document.getElementById("loginPass").value;
   if(!email||!pass)return;
   clientLoginBusy=true;
-  if(button){button.disabled=true;button.textContent="A entrar...";}
+  if(button){button.disabled=true;button.textContent="A verificar...";}
   try{
+    // A sessão só é considerada válida depois desta resposta do Supabase.
     const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
-    if(error){alert("Email ou senha incorretos.");return;}
-    if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(data.user?.email||"").trim().toLowerCase()))
+    if(error || !data?.user){
+      alert("Email ou senha incorretos.");
+      return;
+    }
+    const user=data.user;
+    if(["nelswaguan@gmail.com","editojosejoaquim812@gmail.com","jojomilagre@gmail.com"].includes(String(user.email||"").trim().toLowerCase()))
       localStorage.removeItem("drivePendingAdminInvite");
-    const profile=await getClientProfile(data.user);
+
+    // Primeiro reconhecer a conta, depois verificar perfil e função.
+    const profile=await getClientProfile(user);
+    currentClientUser=user;
     currentClientProfile=profile;
-    updateClientHeader(data.user);
-    await refreshAdminState(data.user);
-    showClientAccount(profile);
-    closeClientModal();
+    updateClientHeader(user);
+    await refreshAdminState(user);
+
+    // Só agora mostramos a confirmação; nunca antes da autenticação.
+    showClientAccount(profile,"Login realizado com sucesso!");
   }finally{
     clientLoginBusy=false;
     if(button){button.disabled=false;button.textContent="Entrar";}
   }
 }
-
 async function loginWithGoogle(){
   if(!document.getElementById("googleLegalConsent")?.checked){alert("Aceita primeiro a Política de Privacidade e os Termos de Uso.");return;}
   localStorage.setItem("driveLegalConsentIntent","1");
@@ -610,6 +641,7 @@ async function updateRecoveredPassword(e){
 }
 
 async function initClientModal(){
+  clientAuthStateReady=false;
   const login=document.getElementById("clientLoginForm"),signup=document.getElementById("clientSignupForm"),forgot=document.getElementById("forgotPasswordForm"),reset=document.getElementById("resetPasswordForm");
   if(login){
     login.onsubmit=clientLogin;
@@ -626,7 +658,7 @@ async function initClientModal(){
     location.replace("admin.html?invite="+encodeURIComponent(adminInvite));
     return;
   }
-  if(!window.driveSupabase){updateClientHeader(null);return;}
+  if(!window.driveSupabase){updateClientHeader(null);clientAuthStateReady=true;return;}
   const {data:{session}}=await window.driveSupabase.auth.getSession();
   const recovery=new URLSearchParams(location.search).get("reset")==="1" || window.location.hash.includes("type=recovery");
   if(recovery && session){showClientReset();}
@@ -639,6 +671,7 @@ async function initClientModal(){
     if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);showClientAccount(profile);}
   }
   else{updateClientHeader(null);await refreshAdminState(null);}
+  clientAuthStateReady=true;
   window.driveSupabase.auth.onAuthStateChange(async (event,session)=>{
     if(event==="PASSWORD_RECOVERY"){showClientReset();return;}
     if(session){
@@ -647,9 +680,18 @@ async function initClientModal(){
       if(isOwner) localStorage.removeItem("drivePendingAdminInvite");
       else await claimPendingAdminInvite();
       const accepted=await requireLegalConsent(session.user);
-      if(accepted){const profile=await getClientProfile(session.user);currentClientProfile=profile;updateClientHeader(session.user);await refreshAdminState(session.user);if(!recovery)showClientAccount(profile);}
+      // Durante o login manual, a confirmação visual é feita somente por clientLogin(),
+      // depois de terminar todas as verificações. Isto evita abrir a conta cedo demais.
+      if(accepted){
+        const profile=await getClientProfile(session.user);
+        currentClientProfile=profile;
+        updateClientHeader(session.user);
+        await refreshAdminState(session.user);
+        if(!recovery && !clientLoginBusy) showClientAccount(profile);
+      }
     }
     else{currentClientUser=null;currentClientProfile=null;currentClientIsAdmin=false;updateClientHeader(null);await refreshAdminState(null);showClientLogin();}
+    clientAuthStateReady=true;
   });
 }
 
@@ -665,7 +707,10 @@ document.addEventListener("DOMContentLoaded",async()=>{
     quick.addEventListener("keydown",e=>{if(e.key==="Escape")hideSearchSuggestions();if(e.key==="Enter")hideSearchSuggestions();});
   }
   document.addEventListener("click",e=>{if(!e.target.closest(".hero-search"))hideSearchSuggestions();});
-  renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();await initClientModal();updateFooterContact();
+  renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();
+  clientAuthCheckPromise=initClientModal();
+  await clientAuthCheckPromise;
+  updateFooterContact();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();
   if(params.get("openSignup")==="1"){openClientModal();showClientSignup();}
