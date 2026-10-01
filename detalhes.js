@@ -61,7 +61,15 @@ async function initDetails(){
       if(error) throw error;
       cars=Array.isArray(data)?data:[];
       car=cars.find(x=>x.id===id)||null;
-      if(car){ render(); try{ await window.driveSupabase.rpc("increment_car_view",{p_car_id:car.id}); }catch(e){ console.warn("Visualização:",e); } }
+      if(car){
+        try{
+          const key="driveRecentlyViewed";
+          let recent=JSON.parse(localStorage.getItem(key)||"[]");
+          if(!Array.isArray(recent))recent=[];
+          recent=[String(car.id),...recent.map(String).filter(x=>x!==String(car.id))].slice(0,10);
+          localStorage.setItem(key,JSON.stringify(recent));
+        }catch(_){}
+        render(); try{ await window.driveSupabase.rpc("increment_car_view",{p_car_id:car.id}); }catch(e){ console.warn("Visualização:",e); } }
       else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';
     }catch(e){
       console.warn("Detalhes do catálogo:",e);

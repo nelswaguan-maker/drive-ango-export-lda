@@ -57,6 +57,14 @@
   <button class="search-main" onclick="applyFilters()"><i class="fa-solid fa-magnifying-glass"></i> Procurar</button>
 </section>
 
+<section id="results" class="results-section hidden-home-results" aria-live="polite">
+  <div class="results-head">
+    <h2 class="red-title">Resultados</h2>
+    <button type="button" onclick="clearFilters()">Limpar filtros</button>
+  </div>
+  <div id="resultsGrid" class="car-grid"></div>
+</section>
+
 <div id="filterModal" class="modal">
   <div class="modal-box">
     <button class="close" onclick="closeFilter()">×</button>
@@ -67,7 +75,10 @@
 
 <section id="avisos" class="notices-section content-section">
   <div class="notices-heading"><span><i class="fa-solid fa-triangle-exclamation"></i> Avisos importantes</span><small>Leia antes de fazer um pedido</small></div>
-  <div class="notice-grid">
+  <div class="notice-carousel" aria-label="Avisos importantes">
+    <button class="notice-arrow notice-prev" type="button" aria-label="Aviso anterior" onclick="moveNotice(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+    <div class="notice-viewport" id="noticeViewport">
+      <div class="notice-grid" id="noticeGrid">
     <article class="notice-card notice-main">
       <div class="notice-icon"><i class="fa-solid fa-circle-info"></i></div>
       <div>
@@ -89,10 +100,19 @@
         <p>Estamos aqui para facilitar a comunicação e o acompanhamento do seu pedido localmente. <strong>O envio de um pedido não significa confirmação automática de compra.</strong></p>
       </div>
     </article>
+      </div>
+    </div>
+    <button class="notice-arrow notice-next" type="button" aria-label="Próximo aviso" onclick="moveNotice(1)"><i class="fa-solid fa-chevron-right"></i></button>
   </div>
 </section>
 
-<section id="promoBanner" class="banner-strip"><div class="promo">DRIVE <strong>PROMOÇÕES</strong><small>Ofertas especiais em veículos selecionados</small></div></section>
+<section id="promoBanner" class="promo-carousel" aria-label="Promoções">
+  <button class="promo-arrow promo-prev" type="button" aria-label="Promoção anterior" onclick="movePromo(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+  <div class="promo-viewport" id="promoViewport">
+    <div class="banner-strip" id="promoGrid"><div class="promo"><b>DRIVE</b> <strong>PROMOÇÕES</strong><small>Ofertas especiais em veículos selecionados</small></div></div>
+  </div>
+  <button class="promo-arrow promo-next" type="button" aria-label="Próxima promoção" onclick="movePromo(1)"><i class="fa-solid fa-chevron-right"></i></button>
+</section>
 
 <section id="marcas" class="content-section">
   <h2 class="red-title">Navegar Por Marca De Carro</h2>
@@ -103,7 +123,7 @@
 <section id="precos" class="content-section">
   <h2 class="red-title">Procurar Por Preço Do Veículo</h2>
   <div class="choice-grid">
-    <button onclick="setPrice(0,1000)">Abaixo de $1,000<br><small id="pc0">(0)</small></button>
+    <button onclick="setPrice(0,999)">Abaixo de $1,000<br><small id="pc0">(0)</small></button>
     <button onclick="setPrice(1001,2000)">$1,001 - $2,000<br><small id="pc1">(0)</small></button>
     <button onclick="setPrice(2001,3000)">$2,001 - $3,000<br><small id="pc2">(0)</small></button>
     <button onclick="setPrice(3001,4000)">$3,001 - $4,000<br><small id="pc3">(0)</small></button>
@@ -120,7 +140,7 @@
     <button onclick="setDiscount(30)">30% de desconto ou mais</button>
     <button onclick="setDiscount(20)">20% de desconto ou mais</button>
     <button onclick="setDiscount(10)">10% de desconto ou mais</button>
-    <button onclick="setDiscount(1)">1-10% de desconto</button>
+    <button onclick="setDiscountRange(1,10)">1-10% de desconto</button>
   </div>
 </section>
 
@@ -145,14 +165,18 @@
 <section class="content-section">
   <h2 class="section-heading">Tags populares</h2>
   <div class="tags">
-    <button onclick="tagSearch('Japan Inventory')">Japan Inventory</button>
-    <button onclick="tagSearch('SUV')">SUV</button>
-    <button onclick="tagSearch('Pick up')">Pick up</button>
-    <button onclick="tagSearch('4WD')">4WD</button>
-    <button onclick="tagSearch('Hybrid')">Hybrid</button>
+    <button type="button" class="popular-tag" data-tag="Japan Inventory" onclick="tagSearch('Japan Inventory')">Japan Inventory</button>
+    <button type="button" class="popular-tag" data-tag="SUV" onclick="tagSearch('SUV')">SUV</button>
+    <button type="button" class="popular-tag" data-tag="Pick up" onclick="tagSearch('Pick up')">Pick up</button>
+    <button type="button" class="popular-tag" data-tag="4WD" onclick="tagSearch('4WD')">4WD</button>
+    <button type="button" class="popular-tag" data-tag="Hybrid" onclick="tagSearch('Hybrid')">Hybrid</button>
   </div>
 </section>
 
+<section id="recentSection" class="content-section recent-home-section" style="display:none">
+  <h2 class="section-heading">Vistos recentemente</h2>
+  <div id="recentCars" class="recent-list"></div>
+</section>
 
 
 <!-- A listagem de carros não aparece diretamente na página inicial.

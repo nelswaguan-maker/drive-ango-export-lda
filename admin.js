@@ -3,6 +3,7 @@ let currentAdminUser=null;
 const KEY="driveCars", CONTACT_KEY="driveContact";
 let cars=[];
 let adminCarsExpanded=false;
+let adminCarSearch="";
 let editingImages=[];
 let selectedPhotoFiles=[];
 let cropState=null;
@@ -69,6 +70,9 @@ function updateAdminPricePreview(){
   const r=window.driveCurrency?.getRate?.()||0;
   el.textContent=r>0?`Câmbio automático: 1 USD ≈ ${r.toLocaleString("pt-MZ",{maximumFractionDigits:2})} MT · ${usd.toLocaleString("en-US")} USD ≈ ${(usd*r).toLocaleString("pt-MZ",{maximumFractionDigits:0})} MT`:'Câmbio automático: a obter…';
 }
+
+$("adminCarSearch")?.addEventListener("input",e=>{adminCarSearch=e.target.value.trim().toLowerCase();draw();});
+function scrollAdminPromos(direction){const box=$("promotionsList");if(!box)return;box.scrollBy({left:direction*Math.max(260,box.clientWidth*.78),behavior:"smooth"});}
 
 async function init(){
   if(!guard()) return;
@@ -209,7 +213,13 @@ function draw(){
       .then(()=>syncCarsFromBackend())
       .catch(err=>console.warn("Atualização automática da reserva:",err));
   }
-  const visibleCars=adminCarsExpanded?cars:cars.slice(0,2);
+  const searchedCars=adminCarSearch?cars.filter(c=>`${c.brand||""} ${c.model||""} ${c.stock||""} ${c.id||""} ${c.body||""}`.toLowerCase().includes(adminCarSearch)):cars;
+  // Quando há uma pesquisa, mostrar todos os resultados encontrados.
+  // O limite de 2 carros continua apenas para a lista normal do painel.
+  const visibleCars=adminCarSearch?searchedCars:(adminCarsExpanded?searchedCars:searchedCars.slice(0,2));
+  const emptyMessage=adminCarSearch
+    ? `<p>Nenhum carro encontrado para <b>“${esc(adminCarSearch)}”</b>.</p>`
+    : "<p>Nenhum carro publicado.</p>";
   $("list").innerHTML=visibleCars.map(c=>{
     let status=c.status==="sold"?"🔴 VENDIDO":c.status==="reserved"?`🟠 RESERVADO — ${formatCountdown(c.reservedUntil)}`:"🟢 DISPONÍVEL";
     const pub=c.published!==false;
@@ -220,10 +230,11 @@ function draw(){
     ${has("manageStatus")&&c.status==="reserved"?`<button onclick="sellCar('${esc(c.id)}')">Vendido</button><button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir</button>`:""}
     ${has("manageStatus")&&c.status==="sold"?`<button class="secondary" onclick="reopenCar('${esc(c.id)}')">Reabrir carro</button>`:""}
     ${has("delete")?`<button class="danger" onclick="removeCar('${esc(c.id)}')">Eliminar</button>`:""}</div></div>`;
-  }).join("")||"<p>Nenhum carro publicado.</p>";
+  }).join("")||emptyMessage;
   const moreBtn=$("adminCarsMoreBtn");
   if(moreBtn){
-    moreBtn.style.display=cars.length>2?"block":"none";
+    // Durante a pesquisa não há paginação escondida: todos os resultados ficam visíveis.
+    moreBtn.style.display=!adminCarSearch && searchedCars.length>2?"block":"none";
     moreBtn.textContent=adminCarsExpanded?"Mostrar menos":"Ver mais";
   }
 }

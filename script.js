@@ -17,7 +17,7 @@ const seedCars=[
 {id:"DRV010",brand:"Mazda",model:"CX-5",body:"SUV",price:17900,year:2021,km:33000,discount:9,engine:"2,000cc",trans:"AT",drive:"4WD",wheel:"RHD",image:"https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=900&q=80",status:"available"}
 ];
 
-let filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};
+let filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,discountMax:Infinity,search:"",tag:""};
 // Catálogo fixo de marcas mostrado em "Navegar Por Marca" e usado também nos filtros.
 // Cada cartão é uma porta para a página daquela marca. Aliases garantem que nomes
 // como Mercedes-Benz/Mercedes e Citroën/Citroen sejam tratados como a mesma marca.
@@ -62,7 +62,7 @@ function resolvedCarBrand(c){
   return canonicalBrand(c?.brandGroup || c?.brand);
 }
 function brandMatches(a,b){return canonicalBrand(a).toLowerCase()===canonicalBrand(b).toLowerCase();}
-const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van"];
+const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van","Minivan","Bus/Minibus"];
 
 function loadCars(){
   let stored=JSON.parse(localStorage.getItem(KEY)||"null");
@@ -164,7 +164,8 @@ function renderBodies(){
   if(!bodyGrid)return;
   bodyGrid.innerHTML=bodies.map(b=>{
     const count=cars.filter(c=>c.published!==false && String(c.body||"").trim().toLowerCase()===b.toLowerCase()).length;
-    return `<button class="body-card" onclick="setBody(${jsAttr(b)})"><b>${esc(b)}</b><br><small>(${count.toLocaleString('pt-MZ')})</small></button>`;
+    const active=String(filter.body||"").trim().toLowerCase()===b.toLowerCase();
+    return `<button type="button" class="body-card ${active?'active':''}" onclick="setBody(${jsAttr(b)})" aria-pressed="${active}"><b>${esc(b)}</b><br><small>(${count.toLocaleString('pt-MZ')})</small></button>`;
   }).join("");
 }
 function normalizeModelName(brand,model){
@@ -230,7 +231,7 @@ function toggleAvailableModels(){
 }
 
 function renderPriceCounts(){
-  const ranges=[[0,1000],[1001,2000],[2001,3000],[3001,4000],[4001,5000],[5001,Infinity]];
+  const ranges=[[0,999],[1001,2000],[2001,3000],[3001,4000],[4001,5000],[5001,Infinity]];
   ranges.forEach((r,i)=>{
     const el=document.getElementById(`pc${i}`); if(!el)return;
     const n=cars.filter(c=>c?.published!==false&&c?.status!=="sold"&&Number(c.price)>=r[0]&&Number(c.price)<=r[1]).length;
@@ -238,10 +239,18 @@ function renderPriceCounts(){
   });
 }
 
+const RECENT_KEY="driveRecentlyViewed";
+function getRecentIds(){try{const a=JSON.parse(localStorage.getItem(RECENT_KEY)||"[]");return Array.isArray(a)?a:[]}catch(_){return []}}
 function renderRecent(){
-  // A página inicial não mostra anúncios individuais. Mostra apenas modelos agrupados.
-  const recent=document.getElementById("recentCars");
-  if(recent) recent.innerHTML="";
+  const recent=document.getElementById("recentCars"), section=document.getElementById("recentSection");
+  if(!recent||!section){renderAvailableModels(false);renderPriceCounts();return;}
+  const ids=getRecentIds();
+  const recentCars=ids.map(id=>cars.find(c=>String(c.id)===String(id))).filter(c=>c&&c.published!==false&&c.status!=="sold").slice(0,3);
+  if(!recentCars.length){section.style.display="none";recent.innerHTML="";}
+  else{
+    section.style.display="block";
+    recent.innerHTML=recentCars.map(c=>`<a class="recent-card" href="detalhes.html?id=${encodeURIComponent(c.id)}" onclick="openRecentCar(${jsAttr(String(c.id))});" role="link" tabindex="0"><img src="${esc(c.image||c.images?.[0]||"")}" alt="${esc(c.brand+' '+c.model)}" loading="lazy"><div class="recent-info"><small>${esc(c.brand||"")} · ${esc(c.year||"")}</small><strong>${esc(c.model||"")}</strong><b>${driveFormatMoney(c.price)}</b><span>Stock ${esc(c.stock||c.id)}</span></div><i class="fa-solid fa-chevron-right"></i></a>`).join("");
+  }
   renderAvailableModels(false);
   renderPriceCounts();
   const total=document.getElementById("stockTotal");
@@ -252,8 +261,19 @@ function renderRecent(){
   const homeResults=document.getElementById("results");
   if(homeResults) homeResults.classList.add("hidden-home-results");
 }
+function openRecentCar(id){
+  const carId=String(id??"").trim();
+  if(!carId)return false;
+  window.location.assign(`detalhes.html?id=${encodeURIComponent(carId)}`);
+  return true;
+}
+
 function filtered(){
-  const list=cars.filter(c=>(!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||c.body===filter.body)&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&Number(c.discount||0)>=filter.discount&&(!filter.search||`${resolvedCarBrand(c)} ${c.model} ${c.id} ${c.body} ${c.engine}`.toLowerCase().includes(filter.search.toLowerCase())));
+  const list=cars.filter(c=>{
+    const discount=Number(c.discount||0);
+    const tagOk=!filter.tag||tagMatchesCar(c,filter.tag);
+    return (!filter.brand||brandMatches(c.brand,filter.brand))&&(!filter.body||String(c.body||"").trim().toLowerCase()===String(filter.body).trim().toLowerCase())&&Number(c.price)>=filter.minPrice&&Number(c.price)<=filter.maxPrice&&Number(c.year)>=filter.minYear&&Number(c.year)<=filter.maxYear&&Number(c.km)>=filter.minKm&&Number(c.km)<=filter.maxKm&&discount>=filter.discount&&discount<=filter.discountMax&&(!filter.search||`${resolvedCarBrand(c)} ${c.model} ${c.id} ${c.body} ${c.engine} ${c.location||""}`.toLowerCase().includes(filter.search.toLowerCase()))&&tagOk&&c.published!==false&&c.status!=="sold";
+  });
   return list.sort((a,b)=>{
     const brandCmp=String(a.brand||"").trim().localeCompare(String(b.brand||"").trim(),"pt",{sensitivity:"base"});
     if(brandCmp) return brandCmp;
@@ -306,13 +326,58 @@ function showResultsLess(){
   const modelView=!!window.__currentResultsModelView;
   renderResults(list,{limit:5,modelView,expanded:false});
 }
-function applyFilters(){const section=document.getElementById("results");section?.classList.remove("hidden-home-results");section?.classList.remove("model-selection-results");renderResults(filtered());results.scrollIntoView({behavior:"smooth"});}
-function clearFilters(){filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,search:""};document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);if(document.getElementById("quickSearch"))quickSearch.value="";renderResults(cars);}
-function setBrand(b){filter.brand=canonicalBrand(b);brandText.textContent=filter.brand;applyFilters()}
-function setBody(b){filter.body=b;bodyText.textContent=b;applyFilters()}
-function setPrice(a,b){filter.minPrice=a;filter.maxPrice=b;updatePriceFilterText(a,b);applyFilters()}
+function applyFilters(){
+  const section=document.getElementById("results");
+  const grid=document.getElementById("resultsGrid");
+  if(!section||!grid){console.warn("Área de resultados não encontrada.");return;}
+  section.classList.remove("hidden-home-results","model-selection-results");
+  const list=filtered();
+  renderResults(list);
+  section.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function clearFilters(){
+  filter={brand:"",body:"",minPrice:0,maxPrice:Infinity,minYear:0,maxYear:9999,minKm:0,maxKm:Infinity,discount:0,discountMax:Infinity,search:"",tag:""};
+  syncPopularTagState();
+  document.querySelectorAll(".filter-row span").forEach((e,i)=>e.textContent=["Selecione uma marca e modelo","Selecione o tipo de carroceria","Selecione faixa de preço do veículo","Selecione faixa de ano","Selecione Quilometragem (km)"][i]);
+  const q=document.getElementById("quickSearch"); if(q)q.value="";
+  updatePriceFilterText(0,Infinity);
+  const section=document.getElementById("results"); if(section)section.classList.remove("hidden-home-results");
+  renderResults(filtered());
+}
+function setBrand(b){filter.tag="";syncPopularTagState();filter.brand=canonicalBrand(b);brandText.textContent=filter.brand;applyFilters()}
+function setBody(b){filter.tag="";syncPopularTagState();filter.body=b;bodyText.textContent=b;renderBodies();applyFilters()}
+function setPrice(a,b){filter.tag="";syncPopularTagState();filter.minPrice=a;filter.maxPrice=b;updatePriceFilterText(a,b);applyFilters()}
 function updatePriceFilterText(a=filter.minPrice,b=filter.maxPrice){if(!priceText)return;const mt=driveCurrency.get()==="MT";const fmt=n=>mt&&driveCurrency.getRate()>0?`MT ${driveCurrency.convert(n).toLocaleString("pt-MZ",{maximumFractionDigits:0})}`:`${mt?"MT":"$"}${n.toLocaleString("en-US")}`;priceText.textContent=b>=9999999?`Acima de ${fmt(a)}`:`${fmt(a)} - ${fmt(b)}`;}
-function setDiscount(n){filter.discount=n;applyFilters()}
+function setDiscount(n){filter.tag="";syncPopularTagState();filter.discount=n;filter.discountMax=Infinity;applyFilters()}
+function setDiscountRange(min,max){filter.tag="";syncPopularTagState();filter.discount=min;filter.discountMax=max;applyFilters()}
+function tagMatchesCar(c,tag){
+  const t=String(tag||"").trim().toLowerCase();
+  const hay=[c.brand,c.model,c.body,c.drive,c.fuel,c.location,c.engine,c.origin,c.source,c.inventory,c.category,c.tags,c.tag,c.notes]
+    .filter(v=>v!==undefined&&v!==null).join(" ").toLowerCase();
+  const body=String(c.body||"").trim().toLowerCase();
+  const drive=String(c.drive||"").trim().toLowerCase();
+  const fuel=String(c.fuel||"").trim().toLowerCase();
+  if(t==="japan inventory")return /(japan|japão|japon|japanese|jp inventory)/i.test(hay);
+  if(t==="suv")return body==="suv";
+  if(t==="pick up")return /^(pick[ -]?up|pickup)$/i.test(body);
+  if(t==="4wd")return /4wd|4x4|four[ -]?wheel/i.test(drive);
+  if(t==="hybrid")return /hybrid|híbrido/i.test(`${fuel} ${hay}`);
+  return hay.includes(t);
+}
+function syncPopularTagState(){
+  document.querySelectorAll(".popular-tag[data-tag]").forEach(btn=>{
+    const active=String(btn.dataset.tag||"").trim().toLowerCase()===String(filter.tag||"").trim().toLowerCase();
+    btn.classList.toggle("active",active);
+    btn.setAttribute("aria-pressed",String(active));
+  });
+}
+function tagSearch(tag){
+  const next=String(tag||"").trim();
+  filter.tag=String(filter.tag||"").toLowerCase()===next.toLowerCase()?"":next;
+  filter.search="";filter.brand="";filter.body="";filter.minPrice=0;filter.maxPrice=Infinity;filter.discount=0;filter.discountMax=Infinity;
+  syncPopularTagState();
+  applyFilters();
+}
 function buildSearchSuggestions(query){
   const box=document.getElementById("searchSuggestions");
   if(!box)return;
@@ -347,9 +412,9 @@ function chooseSearchSuggestion(brand,model){
   openModel(brand,model);
 }
 function hideSearchSuggestions(){const box=document.getElementById("searchSuggestions");if(box){box.classList.remove("show");}}
-function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();document.getElementById("results")?.classList.remove("hidden-home-results");applyFilters()}
-function setYear(a,b){filter.minYear=a;filter.maxYear=b;yearText.textContent=`${a} - ${b}`;applyFilters()}
-function setKm(a,b){filter.minKm=a;filter.maxKm=b;kmText.textContent=b===Infinity?`Acima de ${a.toLocaleString()} km`:`${a.toLocaleString()} - ${b.toLocaleString()} km`;applyFilters()}
+function doQuickSearch(){filter.search=document.getElementById("quickSearch").value.trim();filter.tag="";syncPopularTagState();document.getElementById("results")?.classList.remove("hidden-home-results");applyFilters()}
+function setYear(a,b){filter.tag="";syncPopularTagState();filter.minYear=a;filter.maxYear=b;yearText.textContent=`${a} - ${b}`;applyFilters()}
+function setKm(a,b){filter.tag="";syncPopularTagState();filter.minKm=a;filter.maxKm=b;kmText.textContent=b===Infinity?`Acima de ${a.toLocaleString()} km`:`${a.toLocaleString()} - ${b.toLocaleString()} km`;applyFilters()}
 function openFilter(type){
   filterModal.style.display="block";
   const titles={brand:"Escolha marca",body:"Escolha a carroceria",price:"Escolha faixa de preço",year:"Escolha faixa de ano",km:"Escolha quilometragem"};
@@ -357,7 +422,7 @@ function openFilter(type){
   let html="";
   if(type==="brand") html=buildBrandFilterOptions();
   if(type==="body") html=bodies.map(x=>`<button class="option" onclick="setBody('${x}');closeFilter()">${x}</button>`).join("");
-  if(type==="price") html=[[0,1000,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");
+  if(type==="price") html=[[0,999,"Abaixo de $1,000"],[1001,2000,"$1,001 - $2,000"],[2001,3000,"$2,001 - $3,000"],[3001,4000,"$3,001 - $4,000"],[4001,5000,"$4,001 - $5,000"],[5001,9999999,"Acima de $5,001"]].map(x=>`<button class="option" onclick="setPrice(${x[0]},${x[1]});closeFilter()">${x[2]}</button>`).join("");
   if(type==="year") html=[[2018,2020],[2021,2022],[2023,2024],[2025,2026]].map(x=>`<button class="option" onclick="setYear(${x[0]},${x[1]});closeFilter()">${x[0]} - ${x[1]}</button>`).join("");
   if(type==="km") html=[[0,10000],[10001,30000],[30001,60000],[60001,Infinity]].map(x=>`<button class="option" onclick="setKm(${x[0]},${x[1]});closeFilter()">${x[1]===Infinity?'Acima de ':''}${x[0].toLocaleString()} km${x[1]!==Infinity?' - '+x[1].toLocaleString()+' km':''}</button>`).join("");
   modalContent.innerHTML=html;
@@ -786,7 +851,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
     quick.addEventListener("keydown",e=>{if(e.key==="Escape")hideSearchSuggestions();if(e.key==="Enter")hideSearchSuggestions();});
   }
   document.addEventListener("click",e=>{if(!e.target.closest(".hero-search"))hideSearchSuggestions();});
-  renderBrands();renderBodies();renderPopular();renderRecent();renderResults(cars);updateFavCount();
+  renderBrands();renderBodies();renderPopular();renderRecent();syncPopularTagState();renderResults(cars);updateFavCount();
   await clientAuthCheckPromise;
   await loadGeneralSiteContact();
   const params=new URLSearchParams(location.search);
@@ -831,7 +896,81 @@ async function loadPublicPromotions(){
   const promos=data.filter(p=>new Date(p.starts_at).getTime()<=now&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));
   if(!promos.length)return;
   promos.forEach(p=>addNotification('Nova promoção',p.title||'Há uma nova oferta disponível.','promo',`promo:${p.id}`));
-  box.innerHTML=promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="detalhes.html?id=${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('');
+  box.innerHTML=`<button class="promo-arrow promo-prev" type="button" aria-label="Promoção anterior" onclick="movePromo(-1)"><i class="fa-solid fa-chevron-left"></i></button><div class="promo-viewport" id="promoViewport"><div class="banner-strip" id="promoGrid">${promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="detalhes.html?id=${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('')}</div></div><button class="promo-arrow promo-next" type="button" aria-label="Próxima promoção" onclick="movePromo(1)"><i class="fa-solid fa-chevron-right"></i></button>`;
+  initPromoCarousel();
 }
 
 document.addEventListener("DOMContentLoaded",loadPublicPromotions);
+
+/* ===== CARROSSEL DE PROMOÇÕES DA HOME ===== */
+let promoIndex=0, promoStartX=0, promoDragging=false;
+function promoItems(){return Array.from(document.querySelectorAll('#promoGrid .promo'));}
+function promoVisibleCount(){return window.matchMedia('(max-width: 800px)').matches?1:3;}
+function updatePromoCarousel(){
+  const grid=document.getElementById('promoGrid'), viewport=document.getElementById('promoViewport');
+  if(!grid||!viewport)return;
+  const items=promoItems(), visible=promoVisibleCount(), max=Math.max(0,items.length-visible);
+  promoIndex=Math.min(Math.max(promoIndex,0),max);
+  if(visible===1) grid.style.transform=`translateX(-${promoIndex*100}%)`;
+  else {const gap=12, step=(viewport.clientWidth+gap)/visible; grid.style.transform=`translateX(-${promoIndex*step}px)`;}
+  const prev=document.querySelector('#promoBanner .promo-prev'), next=document.querySelector('#promoBanner .promo-next');
+  if(prev)prev.disabled=promoIndex<=0; if(next)next.disabled=promoIndex>=max;
+}
+function movePromo(direction){const max=Math.max(0,promoItems().length-promoVisibleCount());promoIndex=Math.min(Math.max(promoIndex+direction,0),max);updatePromoCarousel();}
+function initPromoCarousel(){
+  const viewport=document.getElementById('promoViewport'); if(!viewport)return;
+  viewport.addEventListener('touchstart',e=>{promoStartX=e.touches[0].clientX;promoDragging=true},{passive:true});
+  viewport.addEventListener('touchend',e=>{if(!promoDragging)return;promoDragging=false;const dx=e.changedTouches[0].clientX-promoStartX;if(Math.abs(dx)>45)movePromo(dx<0?1:-1)},{passive:true});
+  updatePromoCarousel();
+}
+window.addEventListener('resize',updatePromoCarousel);
+
+/* ===== CARROSSEL DE AVISOS DA HOME ===== */
+let noticeIndex = 0;
+let noticeStartX = 0;
+let noticeDragging = false;
+
+function noticeItems(){ return Array.from(document.querySelectorAll('#noticeGrid .notice-card')); }
+function noticeVisibleCount(){ return window.matchMedia('(max-width: 800px)').matches ? 1 : 3; }
+function updateNoticeCarousel(){
+  const grid=document.getElementById('noticeGrid');
+  const viewport=document.getElementById('noticeViewport');
+  const prev=document.querySelector('.notice-prev');
+  const next=document.querySelector('.notice-next');
+  const items=noticeItems();
+  if(!grid||!viewport||!items.length)return;
+  const visible=noticeVisibleCount();
+  const max=Math.max(0,items.length-visible);
+  noticeIndex=Math.min(Math.max(noticeIndex,0),max);
+  if(visible===1){
+    grid.style.transform=`translateX(-${noticeIndex*100}%)`;
+  }else{
+    const gap=12;
+    const step=(viewport.clientWidth+gap)/visible;
+    grid.style.transform=`translateX(-${noticeIndex*step}px)`;
+  }
+  if(prev)prev.disabled=noticeIndex<=0;
+  if(next)next.disabled=noticeIndex>=max;
+}
+function moveNotice(direction){
+  const max=Math.max(0,noticeItems().length-noticeVisibleCount());
+  noticeIndex=Math.min(Math.max(noticeIndex+direction,0),max);
+  updateNoticeCarousel();
+}
+function initNoticeCarousel(){
+  const viewport=document.getElementById('noticeViewport');
+  if(!viewport)return;
+  viewport.addEventListener('touchstart',e=>{
+    noticeStartX=e.touches[0].clientX;
+    noticeDragging=true;
+  },{passive:true});
+  viewport.addEventListener('touchend',e=>{
+    if(!noticeDragging)return;
+    noticeDragging=false;
+    const dx=e.changedTouches[0].clientX-noticeStartX;
+    if(Math.abs(dx)>45)moveNotice(dx<0?1:-1);
+  },{passive:true});
+  updateNoticeCarousel();
+}
+window.addEventListener('resize',updateNoticeCarousel);
+document.addEventListener('DOMContentLoaded',initNoticeCarousel);
