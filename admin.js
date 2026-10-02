@@ -864,7 +864,7 @@ async function openAdminSettingsTab(tab){
     $("contactForm")?.addEventListener("submit",async e=>{e.preventDefault();if(!currentAdminUser||!sb())return;const n=$("contactPhone").value.trim();const {error}=await sb().from("profiles").update({phone:n}).eq("id",currentAdminUser.id);if(error){alert("Não foi possível guardar o WhatsApp: "+error.message);return;}localStorage.setItem(CONTACT_KEY,n);alert("WhatsApp deste administrador guardado.");});
     $("siteContactForm")?.addEventListener("submit",async e=>{e.preventDefault();await saveGeneralSiteContact();});
   }else if(tab==="site"){
-    box.innerHTML=`<div class="settings-tab"><h3>🌐 Site e partilha</h3><p>Os links dos anúncios usam o formato público <strong>/carro/STOCK</strong>, sem expor <strong>detalhes.html</strong>.</p><p>Exemplo: <code>/carro/DRV1790408224947</code></p></div>`;
+    box.innerHTML=`<div class="settings-tab"><h3>🌐 Site e partilha</h3><p>Os links dos anúncios usam a página estática <strong>detalhes.html?id=STOCK</strong>, evitando erros 404 no deploy.</p><p>Exemplo: <code>/detalhes.html?id=DRV1790408224947</code></p></div>`;
   }else{
     box.innerHTML=`<div class="settings-tab"><h3>🎨 Aparência e tema</h3><div class="settings-theme-grid"><button onclick="setAdminTheme('light')" class="${theme==="light"?"selected":""}">☀️ Claro</button><button onclick="setAdminTheme('dark')" class="${theme==="dark"?"selected":""}">🌙 Noturno</button><button onclick="setAdminTheme('system')" class="${theme==="system"?"selected":""}">💻 Sistema</button></div><small>A preferência fica guardada neste dispositivo.</small></div>`;
   }

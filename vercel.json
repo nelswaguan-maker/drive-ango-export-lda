@@ -30,8 +30,12 @@
   ],
   "rewrites": [
     {
+      "source": "/car/:slug",
+      "destination": "/detalhes.html?slug=:slug"
+    },
+    {
       "source": "/carro/:id",
-      "destination": "/api/car?id=:id"
+      "destination": "/detalhes.html?id=:id"
     }
   ]
 }

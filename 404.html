@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DRIVE — A abrir anúncio</title></head>
+<body><p>A abrir o anúncio…</p><script>
+(function(){
+  var m=location.pathname.match(/^\/carro\/([^/]+)\/?$/);
+  if(m){
+    var id=decodeURIComponent(m[1]);
+    var q=new URLSearchParams(location.search);
+    var target='/detalhes.html?id='+encodeURIComponent(id);
+    if(q.has('imagem')) target+='&imagem='+encodeURIComponent(q.get('imagem'));
+    location.replace(target);
+  }else{ location.replace('/'); }
+})();
+</script></body></html>

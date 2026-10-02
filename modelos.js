@@ -43,7 +43,7 @@
       const status=c.status==='sold'?'VENDIDO':c.status==='reserved'?'RESERVADO':'DISPONÍVEL';
       const statusClass=c.status==='sold'?'sold':c.status==='reserved'?'reserved':'available';
       return `<article class="model-car-card ${c.status==='reserved'?'is-reserved':''}">
-        <a class="model-car-image" href="/carro/${encodeURIComponent(c.id)}">
+        <a class="model-car-image" href="${driveCarUrl(c)}">
           <img src="${esc(image)}" alt="${esc(c.brand+' '+c.model)}" loading="lazy">
           <span class="model-status ${statusClass}">${status}</span>
           <span class="model-stock">Stock ${esc(c.stock||c.id)}</span>
@@ -54,7 +54,7 @@
           <div class="model-car-price">${money(c.price)}</div>
           <div class="model-car-specs">${Number(c.km||0).toLocaleString('pt-MZ')} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</div>
           ${c.discount?`<span class="model-discount">-${esc(c.discount)}%</span>`:''}
-          <a class="model-details-btn" href="/carro/${encodeURIComponent(c.id)}">Ver detalhes</a>
+          <a class="model-details-btn" href="${driveCarUrl(c)}">Ver detalhes</a>
         </div>
       </article>`;
     }).join('');

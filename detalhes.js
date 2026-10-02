@@ -1,5 +1,6 @@
 const detailParams=new URLSearchParams(location.search);
-const id=detailParams.get("id") || ((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1] ? decodeURIComponent((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1]) : null);
+let id=detailParams.get("id") || ((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1] ? decodeURIComponent((location.pathname.match(/^\/carro\/([^/]+)\/?$/)||[])[1]) : null);
+const routeSlug=detailParams.get("slug") || ((location.pathname.match(/^\/car\/([^/]+)\/?$/)||[])[1] ? decodeURIComponent((location.pathname.match(/^\/car\/([^/]+)\/?$/)||[])[1]) : null);
 let cars=[];
 let car=null;
 let currentImageIndex=Math.max(0,Number(new URLSearchParams(location.search).get("imagem")||0)||0);
@@ -25,7 +26,7 @@ async function shareImage(index=currentImageIndex){
   const imgs=gallery().map(safeImageUrl).filter(Boolean);
   if(!imgs.length || !car?.id)return;
   index=Math.max(0,Math.min(Number(index)||0,imgs.length-1));
-  const shareUrl=new URL(`/carro/${encodeURIComponent(car.id)}`,window.location.origin);
+  const shareUrl=new URL(driveCarUrl(car),window.location.origin);
   shareUrl.searchParams.set("imagem",index);
   const url=shareUrl.href;
   const title=`${car?.brand||"DRIVE"} ${car?.model||""}`.trim();
@@ -50,7 +51,7 @@ function updateDetailMeta(){
   if(!car)return;
   const title=`${car.brand||"DRIVE"} ${car.model||""}`.trim();
   const image=safeImageUrl(car.image || (Array.isArray(car.images)?car.images[0]:""));
-  const url=new URL(`/carro/${encodeURIComponent(car.id)}`,window.location.origin).href;
+  const url=new URL(driveCarUrl(car),window.location.origin).href;
   const desc=`${title} — ${car.year||""} · ${driveFormatMoney(car.price)} · Stock ${car.stock||car.id}`.trim();
   document.title=`${title} — DRIVE Global Car Market`;
   updateMeta("description",desc);
@@ -79,7 +80,12 @@ async function initDetails(){
       const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
       if(error) throw error;
       cars=Array.isArray(data)?data:[];
-      car=cars.find(x=>x.id===id)||null;
+      car=cars.find(x=>String(x.id)===String(id))||null;
+      if(!car && routeSlug){
+        const slugify=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/&/g,' e ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-');
+        car=cars.find(x=>slugify([x.brand,x.model,x.year].filter(Boolean).join(' '))===slugify(routeSlug))||null;
+      }
+      if(car) id=String(car.id);
       if(car){
         try{
           const key="driveRecentlyViewed";
@@ -101,7 +107,7 @@ async function initDetails(){
 }
 
 document.addEventListener("DOMContentLoaded",initDetails);
-setInterval(()=>{if(car.status==="reserved"){const el=document.querySelector(".detail-status");if(el)el.textContent=`RESERVADO — ${countdown(car.reservedUntil)}`;}},1000);
+setInterval(()=>{if(car && car.status==="reserved"){const el=document.querySelector(".detail-status");if(el)el.textContent=`RESERVADO — ${countdown(car.reservedUntil)}`;}},1000);
 
 window.addEventListener("driveCurrencyChanged",()=>{if(car)render();});
 window.addEventListener("driveExchangeUpdated",()=>{if(car)render();});

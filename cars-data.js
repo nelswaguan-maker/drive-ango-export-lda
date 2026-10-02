@@ -151,3 +151,14 @@
   }
   window.driveCarsData={TABLE,normalize,inferBrand,normalizeModel,fetchCars,upsertCars,upsertCar,deleteCar,subscribe};
 })();
+
+// URL pública bonita dos anúncios
+window.driveCarSlug=function(car){
+  const clean=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const brand=clean(car?.brand||'');
+  const model=clean(car?.model||'');
+  const year=String(car?.year||'').trim();
+  const text=[brand,model,year].filter(Boolean).join(' ');
+  return text.replace(/&/g,' e ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-') || String(car?.id||'carro');
+};
+window.driveCarUrl=function(car){ return 'detalhes.html?id='+encodeURIComponent(String(car?.id??'')); };
