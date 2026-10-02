@@ -31,7 +31,7 @@
   "rewrites": [
     {
       "source": "/carro/:id",
-      "destination": "/detalhes.html?id=:id"
+      "destination": "/api/car?id=:id"
     }
   ]
 }

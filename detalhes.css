@@ -45,3 +45,6 @@ body.dark-mode{background:#12141a;color:#eee}
 .dark-mode .footer-sbt-notice{background:#2b2618;color:#f2ead2;border-color:#806a35}
 .dark-mode .footer-sbt-notice p{color:#ddd4bd}
 .dark-mode .panel-copyright{color:#aaa;border-color:#343842}
+
+/* Tabela compacta de descrição do veículo */
+.detail-description{margin-top:26px;padding-top:6px;border-top:1px solid #e5e5e5}.detail-description h2{font-size:21px;margin:0 0 12px}.detail-table{display:grid;grid-template-columns:1fr 1fr;border:1px solid #ddd;border-radius:10px;overflow:hidden;background:#fff}.detail-table div{display:flex;justify-content:space-between;gap:16px;padding:11px 13px;border-bottom:1px solid #eee}.detail-table div:nth-child(odd){border-right:1px solid #eee}.detail-table span{color:#666}.detail-table b{text-align:right;color:#292c3d}@media(max-width:650px){.detail-table{grid-template-columns:1fr}.detail-table div:nth-child(odd){border-right:0}.detail-table div{padding:10px 12px}}.dark-mode .detail-description{border-color:#343842}.dark-mode .detail-table{background:#1b1f27;border-color:#3b424e}.dark-mode .detail-table div{border-color:#343842}.dark-mode .detail-table span{color:#aeb5c1}.dark-mode .detail-table b{color:#eee}

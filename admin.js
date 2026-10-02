@@ -83,7 +83,7 @@ async function init(){
   subscribePurchaseOrders();
   await loadPromotions();
   subscribePromotions();
-  renderUser(); draw(); await drawAdmins(); await drawInvites();
+  renderUser(); draw(); await drawAdmins(); await drawInvites(); await loadUserStats(); startAdminPresence();
   await loadAdminContact();
   applyPermissions();
 }
@@ -490,8 +490,8 @@ async function drawAdmins(){
   const adminRows=(data||[]).filter(a=>isOwnerEmail(a.email||"") || String(a.role||"").toLowerCase()==="admin");
   $("adminsList").innerHTML=adminRows.map(a=>{
     const owner=isOwnerEmail(a.email||"");
-    const isCurrent = a.id === currentAdminUser?.id;
-    const onlineBadge = isCurrent && !a.blocked ? `<span class="admin-online">ADM online 🟢</span>` : "";
+    const online = window.driveAdminPresence?.has?.(a.id) || false;
+    const onlineBadge = online && !a.blocked ? `<span class="admin-online">ADM online 🟢</span>` : `<span class="admin-online" style="opacity:.65;background:transparent;color:#777;border-color:#ddd">ADM offline ⚪</span>`;
     return `<div class="admin-item"><div><b>${esc(a.name||"Administrador")}</b><small>${esc(a.email||"")} · ${owner?"👑 Proprietário Principal":"🛡️ Administrador"}${a.blocked?" · BLOQUEADO":""}</small>${onlineBadge}</div>
     ${owner?`<strong>CONTROLO TOTAL</strong>`:`<div class="item-actions"><button onclick="toggleBlock('${esc(a.id)}',${!a.blocked})">${a.blocked?"Desbloquear":"Bloquear"}</button><button class="danger" onclick="removeAdmin('${esc(a.id)}')">Remover</button></div>`}</div>`;
   }).join("")||"<p>Nenhum administrador.</p>";
@@ -517,13 +517,69 @@ async function removeAdmin(id){
   await drawAdmins();
 }
 
+/* ===== UTILIZADORES / ESTATÍSTICAS / ADM ONLINE ===== */
+function normalizeWhatsAppAdmin(phone){return String(phone||'').replace(/[^0-9]/g,'');}
+function userWhatsAppUrl(phone){const n=normalizeWhatsAppAdmin(phone);return n?`https://wa.me/${n}?text=${encodeURIComponent('Olá, sou da Angó Global Cars. Podemos falar?')}`:'#';}
+async function loadUserStats(){
+  if(!$('usersList')||!sb()||!currentAdminUser)return;
+  const search=String($('userSearch')?.value||'').trim().toLowerCase();
+  try{
+    const [{data:profiles,error:pErr},{data:events,error:eErr}]=await Promise.all([
+      sb().from('profiles').select('id,name,email,phone,role,blocked,created_at').order('created_at',{ascending:false}),
+      sb().from('login_events').select('user_id,created_at').order('created_at',{ascending:false}).limit(5000)
+    ]);
+    if(pErr) throw pErr;
+    const rows=(profiles||[]).filter(u=>String(u.role||'client')==='client');
+    const ev=events||[];
+    const unique=new Set(ev.map(x=>x.user_id));
+    const today=new Date(); today.setHours(0,0,0,0);
+    const todayCount=ev.filter(x=>new Date(x.created_at)>=today).length;
+    const online=(window.driveAdminPresence instanceof Set)?window.driveAdminPresence.size:0;
+    const stats=$('userStats');
+    if(stats)stats.innerHTML=`<div><b>${rows.length}</b><small>Contas criadas</small></div><div><b>${unique.size}</b><small>Fizeram login</small></div><div><b>${todayCount}</b><small>Logins hoje</small></div><div><b>${online}</b><small>ADM online agora</small></div>`;
+    const filtered=rows.filter(u=>!search || `${u.name||''} ${u.email||''} ${u.phone||''}`.toLowerCase().includes(search));
+    $('usersList').innerHTML=filtered.map(u=>{
+      const phone=String(u.phone||'').trim();
+      const last=ev.find(x=>x.user_id===u.id)?.created_at;
+      return `<div class="admin-item"><div><b>${esc(u.name||'Cliente')}</b><small>${esc(u.email||'')} · ${phone?`📱 ${esc(phone)}`:'Sem WhatsApp guardado'}</small><small>Conta: ${u.created_at?new Date(u.created_at).toLocaleDateString('pt-MZ'):''}${last?` · Último login: ${new Date(last).toLocaleString('pt-MZ')}`:''}</small></div><div class="item-actions">${phone?`<a class="user-wa" href="${userWhatsAppUrl(phone)}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>`:''}</div></div>`;
+    }).join('') || '<p>Nenhum utilizador encontrado.</p>';
+  }catch(e){console.warn('Estatísticas/utilizadores:',e);$('usersList').innerHTML='<p>Para ativar esta área, executa o SQL <code>analytics-presence-users.sql</code> no Supabase.</p>';}
+}
+$('userSearch')?.addEventListener('input',()=>loadUserStats());
+
+window.driveAdminPresence=new Set();
+let adminPresenceTimer=null;
+async function updateAdminPresence(){
+  if(!currentAdminUser||!sb())return;
+  try{await sb().from('admin_presence').upsert({user_id:currentAdminUser.id,last_seen_at:new Date().toISOString()},{onConflict:'user_id'});}catch(e){return;}
+  try{
+    const cutoff=new Date(Date.now()-90000).toISOString();
+    const {data}=await sb().from('admin_presence').select('user_id,last_seen_at').gte('last_seen_at',cutoff);
+    window.driveAdminPresence=new Set((data||[]).map(x=>x.user_id));
+    await drawAdmins();
+  }catch(e){}
+}
+function startAdminPresence(){
+  if(adminPresenceTimer)clearInterval(adminPresenceTimer);
+  updateAdminPresence();
+  adminPresenceTimer=setInterval(updateAdminPresence,30000);
+}
+async function recordLoginEvent(user){
+  if(!user||!sb())return;
+  try{await sb().from('login_events').insert({user_id:user.id});}catch(e){console.warn('Login analytics:',e.message||e);}
+}
+
+function isStrongAdminPassword(password){
+  return typeof password === "string" && password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+}
+
 /* ===== ACEITAR CONVITE ===== */
 async function acceptInvite(){
   const token=new URLSearchParams(location.search).get("invite");
   const name=$("acceptName").value.trim(),email=$("acceptEmail").value.trim().toLowerCase(),pass=$("acceptPass").value,confirm=$("acceptPassConfirm").value;
   const msg=$("inviteMsg");
   if(!token){if(msg)msg.textContent="Convite não encontrado.";return;}
-  if(name.length<2||pass.length<8||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais (mínimo 8 caracteres).";return;}
+  if(name.length<2||!isStrongAdminPassword(pass)||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais. A senha deve ter 12+ caracteres, maiúscula, minúscula, número e símbolo.";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
   const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:window.location.origin+"/admin.html?invite="+encodeURIComponent(token)}});
@@ -630,7 +686,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
     if($("loginMsg") && !$("loginMsg").textContent) $("loginMsg").textContent="Entra com a tua conta de administrador.";
   }
   await tryPendingInvite();
-  setInterval(async()=>{if(currentAdminUser){await syncCarsFromBackend();draw();drawAdmins();}},5000);
+  setInterval(async()=>{if(currentAdminUser){await syncCarsFromBackend();draw();drawAdmins();loadUserStats();}},5000);
 });
 
 // Login ADM: a autenticação só é executada pelo envio explícito do formulário.

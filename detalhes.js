@@ -25,8 +25,7 @@ async function shareImage(index=currentImageIndex){
   const imgs=gallery().map(safeImageUrl).filter(Boolean);
   if(!imgs.length || !car?.id)return;
   index=Math.max(0,Math.min(Number(index)||0,imgs.length-1));
-  const shareUrl=new URL("detalhes.html",window.location.href);
-  shareUrl.searchParams.set("id",car.id);
+  const shareUrl=new URL(`/carro/${encodeURIComponent(car.id)}`,window.location.origin);
   shareUrl.searchParams.set("imagem",index);
   const url=shareUrl.href;
   const title=`${car?.brand||"DRIVE"} ${car?.model||""}`.trim();
@@ -40,13 +39,33 @@ async function shareImage(index=currentImageIndex){
 
 function previousCarImage(){const imgs=gallery();if(imgs.length>1){currentImageIndex=(currentImageIndex-1+imgs.length)%imgs.length;renderImage();}}
 function nextCarImage(){const imgs=gallery();if(imgs.length>1){currentImageIndex=(currentImageIndex+1)%imgs.length;renderImage();}}
+function updateMeta(name,content,property=false){
+  if(!content)return;
+  const attr=property?"property":"name";
+  let el=document.querySelector(`meta[${attr}="${name}"]`);
+  if(!el){el=document.createElement("meta");el.setAttribute(attr,name);document.head.appendChild(el);}
+  el.setAttribute("content",String(content));
+}
+function updateDetailMeta(){
+  if(!car)return;
+  const title=`${car.brand||"DRIVE"} ${car.model||""}`.trim();
+  const image=safeImageUrl(car.image || (Array.isArray(car.images)?car.images[0]:""));
+  const url=new URL(`/carro/${encodeURIComponent(car.id)}`,window.location.origin).href;
+  const desc=`${title} — ${car.year||""} · ${driveFormatMoney(car.price)} · Stock ${car.stock||car.id}`.trim();
+  document.title=`${title} — DRIVE Global Car Market`;
+  updateMeta("description",desc);
+  updateMeta("og:title",title,true); updateMeta("og:description",desc,true); updateMeta("og:url",url,true);
+  if(image)updateMeta("og:image",image,true);
+  updateMeta("twitter:card","summary_large_image"); updateMeta("twitter:title",title); updateMeta("twitter:description",desc); if(image)updateMeta("twitter:image",image);
+}
+
 function render(){
   const imgs=gallery().map(safeImageUrl).filter(Boolean);
   const brand=escHtml(car.brand);
   const model=escHtml(car.model);
   const stock=escHtml(car.stock||car.id);
   const idEsc=escHtml(car.id);
-  document.getElementById("detail").innerHTML=`<div class="gallery"><img id="mainCarImage" src="${imgs[0]||""}" alt="${brand} ${model}"><span class="gallery-stock">Stock ${stock}</span><button class="gallery-image-share" type="button" onclick="shareImage()" aria-label="Partilhar esta imagem"><i class="fa-solid fa-share-nodes"></i> Partilhar</button><button class="gallery-arrow gallery-prev" type="button" onclick="previousCarImage()" aria-label="Imagem anterior">◀</button><button class="gallery-arrow gallery-next" type="button" onclick="nextCarImage()" aria-label="Próxima imagem">▶</button><div class="gallery-thumbs">${imgs.map((img,i)=>`<span class="gallery-thumb-wrap"><button type="button" class="gallery-thumb ${i===0?"active":""}" onclick="selectCarImage(${i})"><img src="${img}" alt="Foto ${i+1}"></button><button type="button" class="gallery-thumb-share" onclick="event.stopPropagation();shareImage(${i})" aria-label="Partilhar foto ${i+1}"><i class="fa-solid fa-link"></i></button></span>`).join("")}</div><div class="gallery-counter">1/${imgs.length||1}</div></div><div class="info"><div>${status()}</div><small>${escHtml(car.year)} · ${brand} · Stock ${idEsc}</small><h1>${model}</h1><div class="price">${driveFormatMoney(car.price)}</div><div class="detail-exchange" data-drive-rate>1 USD ≈ — MT</div>${car.discount?`<p class="discount">-${escHtml(car.discount)}% de desconto</p>`:""}<div class="detail-buy-wrap"><a class="cta buy-now buy-now-large" href="${car.status==='available'?`compra.html?id=${encodeURIComponent(car.id)}`:'#'}" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-solid fa-cart-shopping"></i> BUY NOW</a></div><div class="specs"><div>KM<br><b>${Number(car.km).toLocaleString()}</b></div><div>Motor<br><b>${escHtml(car.engine||"—")}</b></div><div>Combustível<br><b>${escHtml(car.fuel||"—")}</b></div><div>Porto de chegada<br><b>${escHtml(car.arrivalPort||"—")}</b></div><div>Peso<br><b>${escHtml(car.weight||"—")}</b></div><div>Transmissão<br><b>${escHtml(car.trans||"—")}</b></div><div>Tração<br><b>${escHtml(car.drive||"—")}</b></div><div>Volante<br><b>${escHtml(car.wheel||"—")}</b></div><div>Cor<br><b>${escHtml(car.color||"—")}</b></div><div>Localização<br><b>${escHtml(car.location||"—")}</b></div><div>Assentos<br><b>${escHtml(car.seats||"—")}</b></div><div>Portas<br><b>${escHtml(car.doors||"—")}</b></div><div>Dimensão<br><b>${escHtml(car.dimensions||"—")}</b></div><div>Ano<br><b>${escHtml(car.year)}</b></div><div>Carroceria<br><b>${escHtml(car.body||"—")}</b></div></div><div class="detail-actions"><a class="cta" href="${car.status==='available'?wa(): '#'}" target="_blank" rel="noopener noreferrer" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="cta secondary-cta" href="${car.status==='available'?call(): '#'}" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div>`;
+  document.getElementById("detail").innerHTML=`<div class="gallery"><img id="mainCarImage" src="${imgs[0]||""}" alt="${brand} ${model}"><span class="gallery-stock">Stock ${stock}</span><button class="gallery-image-share" type="button" onclick="shareImage()" aria-label="Partilhar esta imagem"><i class="fa-solid fa-share-nodes"></i> Partilhar</button><button class="gallery-arrow gallery-prev" type="button" onclick="previousCarImage()" aria-label="Imagem anterior">◀</button><button class="gallery-arrow gallery-next" type="button" onclick="nextCarImage()" aria-label="Próxima imagem">▶</button><div class="gallery-thumbs">${imgs.map((img,i)=>`<span class="gallery-thumb-wrap"><button type="button" class="gallery-thumb ${i===0?"active":""}" onclick="selectCarImage(${i})"><img src="${img}" alt="Foto ${i+1}"></button><button type="button" class="gallery-thumb-share" onclick="event.stopPropagation();shareImage(${i})" aria-label="Partilhar foto ${i+1}"><i class="fa-solid fa-link"></i></button></span>`).join("")}</div><div class="gallery-counter">1/${imgs.length||1}</div></div><div class="info"><div>${status()}</div><small>${escHtml(car.year)} · ${brand} · Stock ${idEsc}</small><h1>${model}</h1><div class="price">${driveFormatMoney(car.price)}</div><div class="detail-exchange" data-drive-rate>1 USD ≈ — MT</div>${car.discount?`<p class="discount">-${escHtml(car.discount)}% de desconto</p>`:""}<div class="detail-buy-wrap"><a class="cta buy-now buy-now-large" href="${car.status==='available'?`compra.html?id=${encodeURIComponent(car.id)}`:'#'}" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-solid fa-cart-shopping"></i> BUY NOW</a></div><div class="specs"><div>KM<br><b>${Number(car.km).toLocaleString()}</b></div><div>Motor<br><b>${escHtml(car.engine||"—")}</b></div><div>Combustível<br><b>${escHtml(car.fuel||"—")}</b></div><div>Porto de chegada<br><b>${escHtml(car.arrivalPort||"—")}</b></div><div>Peso<br><b>${escHtml(car.weight||"—")}</b></div><div>Transmissão<br><b>${escHtml(car.trans||"—")}</b></div><div>Tração<br><b>${escHtml(car.drive||"—")}</b></div><div>Volante<br><b>${escHtml(car.wheel||"—")}</b></div><div>Cor<br><b>${escHtml(car.color||"—")}</b></div><div>Localização<br><b>${escHtml(car.location||"—")}</b></div><div>Assentos<br><b>${escHtml(car.seats||"—")}</b></div><div>Portas<br><b>${escHtml(car.doors||"—")}</b></div><div>Dimensão<br><b>${escHtml(car.dimensions||"—")}</b></div><div>Ano<br><b>${escHtml(car.year)}</b></div><div>Carroceria<br><b>${escHtml(car.body||"—")}</b></div></div><section class="detail-description"><h2>Descrição do veículo</h2><div class="detail-table"><div><span>Marca</span><b>${brand}</b></div><div><span>Modelo</span><b>${model}</b></div><div><span>Ano</span><b>${escHtml(car.year||"—")}</b></div><div><span>Carroceria</span><b>${escHtml(car.body||"—")}</b></div><div><span>Quilometragem</span><b>${Number(car.km||0).toLocaleString()}</b></div><div><span>Combustível</span><b>${escHtml(car.fuel||"—")}</b></div><div><span>Motor</span><b>${escHtml(car.engine||"—")}</b></div><div><span>Câmbio</span><b>${escHtml(car.trans||"—")}</b></div><div><span>Tração</span><b>${escHtml(car.drive||"—")}</b></div><div><span>Cor</span><b>${escHtml(car.color||"—")}</b></div><div><span>Assentos</span><b>${escHtml(car.seats||"—")}</b></div><div><span>Portas</span><b>${escHtml(car.doors||"—")}</b></div><div><span>Peso</span><b>${escHtml(car.weight||"—")}</b></div><div><span>Localização</span><b>${escHtml(car.location||"—")}</b></div><div><span>Porto de chegada</span><b>${escHtml(car.arrivalPort||"—")}</b></div><div><span>Stock</span><b>${stock}</b></div></div></section><div class="detail-actions"><a class="cta" href="${car.status==='available'?wa(): '#'}" target="_blank" rel="noopener noreferrer" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="cta secondary-cta" href="${car.status==='available'?call(): '#'}" onclick="${car.status==='available'?'':'return false;'}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div>`;
   renderImage();
 }
 
@@ -69,6 +88,7 @@ async function initDetails(){
           recent=[String(car.id),...recent.map(String).filter(x=>x!==String(car.id))].slice(0,10);
           localStorage.setItem(key,JSON.stringify(recent));
         }catch(_){}
+        updateDetailMeta();
         render(); try{ await window.driveSupabase.rpc("increment_car_view",{p_car_id:car.id}); }catch(e){ console.warn("Visualização:",e); } }
       else document.getElementById("detail").innerHTML='<div class="info"><h1>Este anúncio já não está disponível.</h1><a class="cta" href="index.html">Voltar aos anúncios</a></div>';
     }catch(e){

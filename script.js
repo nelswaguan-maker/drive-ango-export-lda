@@ -74,6 +74,7 @@ function loadCars(){
 }
 function saveCars(list){localStorage.setItem(KEY,JSON.stringify(list));}
 let cars=loadCars();
+let driveInventoryOnline=false;
 
 async function loadPublicCars(){
   // Mantém o último catálogo local enquanto o Supabase responde.
@@ -85,6 +86,7 @@ async function loadPublicCars(){
       if(!error){
         const online=Array.isArray(data)?data:[];
         cars=online;
+        driveInventoryOnline=true;
         localStorage.setItem(KEY,JSON.stringify(cars));
         return;
       }
@@ -92,6 +94,7 @@ async function loadPublicCars(){
     }catch(e){console.warn("Catálogo online:",e);}
   }
   // Se o online falhar, usa o último catálogo local em vez de apagar a contagem.
+  driveInventoryOnline=false;
   cars=cached;
 }
 function subscribePublicCars(){
@@ -108,6 +111,11 @@ function subscribePublicCars(){
 }
 
 function esc(v){return String(v??"").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));}
+async function recordClientLoginEvent(user){
+  if(!user||!window.driveSupabase)return;
+  try{await window.driveSupabase.from('login_events').insert({user_id:user.id});}catch(e){console.warn('Login analytics:',e.message||e);}
+}
+
 function statusHTML(c){
   if(c.status==="sold") return '<span class="status-badge sold">VENDIDO</span>';
   if(c.status==="reserved") return `<span class="status-badge reserved">RESERVADO · <span class="countdown" data-until="${c.reservedUntil}">48:00:00</span></span>`;
@@ -245,11 +253,11 @@ function renderRecent(){
   const recent=document.getElementById("recentCars"), section=document.getElementById("recentSection");
   if(!recent||!section){renderAvailableModels(false);renderPriceCounts();return;}
   const ids=getRecentIds();
-  const recentCars=ids.map(id=>cars.find(c=>String(c.id)===String(id))).filter(c=>c&&c.published!==false&&c.status!=="sold").slice(0,3);
+  const recentCars=ids.map(id=>cars.find(c=>String(c.id)===String(id))).filter(c=>c&&c.published!==false&&c.status!=="sold").slice(0,4);
   if(!recentCars.length){section.style.display="none";recent.innerHTML="";}
   else{
     section.style.display="block";
-    recent.innerHTML=recentCars.map(c=>`<a class="recent-card" href="detalhes.html?id=${encodeURIComponent(c.id)}" onclick="openRecentCar(${jsAttr(String(c.id))});" role="link" tabindex="0"><img src="${esc(c.image||c.images?.[0]||"")}" alt="${esc(c.brand+' '+c.model)}" loading="lazy"><div class="recent-info"><small>${esc(c.brand||"")} · ${esc(c.year||"")}</small><strong>${esc(c.model||"")}</strong><b>${driveFormatMoney(c.price)}</b><span>Stock ${esc(c.stock||c.id)}</span></div><i class="fa-solid fa-chevron-right"></i></a>`).join("");
+    recent.innerHTML=recentCars.map(c=>`<a class="recent-card" href="/carro/${encodeURIComponent(c.id)}" onclick="openRecentCar(${jsAttr(String(c.id))});" role="link" tabindex="0"><img src="${esc(c.image||c.images?.[0]||"")}" alt="${esc(c.brand+' '+c.model)}" loading="lazy"><div class="recent-info"><small>${esc(c.brand||"")} · ${esc(c.year||"")}</small><strong>${esc(c.model||"")}</strong><b>${driveFormatMoney(c.price)}</b><span>Stock ${esc(c.stock||c.id)}</span></div><i class="fa-solid fa-chevron-right"></i></a>`).join("");
   }
   renderAvailableModels(false);
   renderPriceCounts();
@@ -264,7 +272,7 @@ function renderRecent(){
 function openRecentCar(id){
   const carId=String(id??"").trim();
   if(!carId)return false;
-  window.location.assign(`detalhes.html?id=${encodeURIComponent(carId)}`);
+  window.location.assign(`/carro/${encodeURIComponent(carId)}`);
   return true;
 }
 
@@ -300,9 +308,9 @@ function renderResults(list,options={}){
     const disabled=reserved||sold;
     return `<article class="car-card ${reserved?'is-reserved':''} ${sold?'is-sold':''}">
       <div class="card-status">${statusHTML(c)}</div>
-      <div class="car-image-wrap"><a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><button type="button" class="heart image-heart" onclick="toggleFav('${esc(c.id)}',this)" aria-label="Adicionar aos favoritos"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button></div>
+      <div class="car-image-wrap"><a class="car-image-link" href="/carro/${encodeURIComponent(c.id)}"><img src="${esc(c.image)}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><button type="button" class="heart image-heart" onclick="toggleFav('${esc(c.id)}',this)" aria-label="Adicionar aos favoritos"><i class="${isFav(c.id)?'fa-solid':'fa-regular'} fa-heart"></i></button></div>
       <div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${driveFormatMoney(c.price)}</div><small>${Number(c.km).toLocaleString()} km · ${esc(c.engine||'—')} · ${esc(c.weight||'—')}</small>${c.discount?`<div class="discount">-${esc(c.discount)}%</div>`:''}
-      <div class="card-actions"><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref(c)}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
+      <div class="card-actions"><a class="details-btn" href="/carro/${encodeURIComponent(c.id)}">Ver detalhes</a><a class="wa-btn ${disabled?'disabled-link':''}" href="${disabled?'#':whatsappHref(c)}" target="_blank" rel="noopener noreferrer" onclick="${disabled?'return false;':''}"><i class="fa-brands fa-whatsapp"></i> WhatsApp</a><a class="call-btn ${disabled?'disabled-link':''}" href="${disabled?'#':callHref(c)}" onclick="${disabled?'return false;':''}"><i class="fa-solid fa-phone"></i> Ligar</a></div></div></article>`;
   }).join(""):`<p>Nenhum carro encontrado com estes filtros.</p>`;
   if(list.length>visible.length){
     resultsGrid.insertAdjacentHTML("afterend",`<button type="button" class="results-more-btn" onclick="showAllResults()">Ver mais <i class="fa-solid fa-chevron-down"></i></button>`);
@@ -661,13 +669,22 @@ function showLegalConsentGate(){
   });
 }
 
+function isStrongPassword(password){
+  return typeof password === "string" && password.length >= 12 &&
+    /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+}
+
+function passwordRequirementsMessage(){
+  return "A senha deve ter pelo menos 12 caracteres, incluindo letra maiúscula, letra minúscula, número e símbolo.";
+}
+
 async function clientSignup(e){
   e.preventDefault();
   if(!window.driveSupabase){alert("O cadastro online ainda não foi configurado.");return;}
   const form=e.currentTarget;if(form.dataset.busy==="1")return;
   const name=document.getElementById("clientName").value.trim(),phone=document.getElementById("clientPhone").value.trim(),email=document.getElementById("clientEmail").value.trim().toLowerCase(),pass=document.getElementById("clientPass").value,confirm=document.getElementById("clientPassConfirm").value;
   if(!document.getElementById("signupLegalConsent")?.checked){alert("É necessário aceitar a Política de Privacidade e os Termos de Uso.");return;}
-  if(name.length<2){alert("Introduza o seu nome completo.");return;}if(phone.length<7){alert("Introduza um número de telefone válido.");return;}if(pass.length<8){alert("A senha deve ter pelo menos 8 caracteres.");return;}if(pass!==confirm){alert("As senhas não coincidem.");return;}
+  if(name.length<2){alert("Introduza o seu nome completo.");return;}if(phone.length<7){alert("Introduza um número de telefone válido.");return;}if(!isStrongPassword(pass)){alert(passwordRequirementsMessage());return;}if(pass!==confirm){alert("As senhas não coincidem.");return;}
   form.dataset.busy="1";const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A criar conta...";}
   const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
   const emailRedirectTo=window.location.origin+(pendingInvite?"/admin.html?invite="+encodeURIComponent(pendingInvite):"/index.html?openLogin=1");
@@ -721,6 +738,7 @@ async function clientLogin(e){
       return;
     }
     const user=data.user;
+    await recordClientLoginEvent(user);
     currentClientUser=user;
     currentClientProfile=await getClientProfile(user);
 
@@ -768,7 +786,7 @@ async function sendPasswordReset(e){
 async function updateRecoveredPassword(e){
   e.preventDefault();if(!window.driveSupabase)return;
   const pass=document.getElementById("newResetPass").value,confirm=document.getElementById("confirmResetPass").value;
-  if(pass.length<8){alert("A nova senha deve ter pelo menos 8 caracteres.");return;}
+  if(!isStrongPassword(pass)){alert(passwordRequirementsMessage());return;}
   if(pass!==confirm){alert("As senhas não coincidem.");return;}
   const button=e.currentTarget.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A guardar...";}
   const {error}=await window.driveSupabase.auth.updateUser({password:pass});
@@ -835,7 +853,67 @@ async function initClientModal(){
 }
 
 
+/* ===== ANGO ASSISTANT — recepcionista virtual ligado ao inventário real ===== */
+function initAngoAssistant(){
+  if(document.getElementById('angoAssistant'))return;
+  const wrap=document.createElement('div');wrap.id='angoAssistant';wrap.innerHTML=`<button id="angoAssistantBtn" type="button" aria-label="Abrir ANGO Assistant">🤖</button><section id="angoAssistantPanel" aria-live="polite"><header><strong>🤖 ANGO ASSISTANT</strong><button type="button" id="angoAssistantClose">×</button></header><div id="angoChat"><div class="ango-msg bot">👋 Olá! Sou o recepcionista virtual da Angó Global Cars. Posso ajudá-lo a encontrar um carro.</div></div><form id="angoAssistantForm"><input id="angoAssistantInput" autocomplete="off" placeholder="Ex.: Toyota até 10000 USD"><button>Enviar</button></form></section>`;
+  document.body.appendChild(wrap);
+  const panel=document.getElementById('angoAssistantPanel');
+  const btn=document.getElementById('angoAssistantBtn');
+  let dragging=false,moved=false,startX=0,startY=0,startLeft=0,startTop=0;
+  try{
+    const pos=JSON.parse(localStorage.getItem('angoAssistantPosition')||'null');
+    if(pos&&Number.isFinite(pos.left)&&Number.isFinite(pos.top)){
+      wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${Math.max(6,Math.min(pos.left,window.innerWidth-70))}px`;wrap.style.top=`${Math.max(6,Math.min(pos.top,window.innerHeight-70))}px`;
+    }
+  }catch(_){ }
+  const clampPosition=()=>{
+    const rect=wrap.getBoundingClientRect();
+    const left=Math.max(6,Math.min(rect.left,window.innerWidth-64));
+    const top=Math.max(6,Math.min(rect.top,window.innerHeight-64));
+    wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${left}px`;wrap.style.top=`${top}px`;
+    try{localStorage.setItem('angoAssistantPosition',JSON.stringify({left,top}));}catch(_){ }
+  };
+  const pointerStart=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;dragging=true;moved=false;const r=wrap.getBoundingClientRect();startX=e.clientX;startY=e.clientY;startLeft=r.left;startTop=r.top;btn.setPointerCapture?.(e.pointerId);};
+  const pointerMove=e=>{if(!dragging)return;const dx=e.clientX-startX,dy=e.clientY-startY;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${Math.max(6,Math.min(startLeft+dx,window.innerWidth-64))}px`;wrap.style.top=`${Math.max(6,Math.min(startTop+dy,window.innerHeight-64))}px`;};
+  const pointerEnd=e=>{if(!dragging)return;dragging=false;btn.releasePointerCapture?.(e.pointerId);if(moved){clampPosition();btn.dataset.skipClick='1';setTimeout(()=>delete btn.dataset.skipClick,80);}};
+  btn.addEventListener('pointerdown',pointerStart);btn.addEventListener('pointermove',pointerMove);btn.addEventListener('pointerup',pointerEnd);btn.addEventListener('pointercancel',pointerEnd);
+  btn.onclick=()=>{if(btn.dataset.skipClick)return;panel.classList.toggle('open');};
+  document.getElementById('angoAssistantClose').onclick=()=>panel.classList.remove('open');
+  document.getElementById('angoAssistantForm').onsubmit=e=>{e.preventDefault();angoAssistantReply(document.getElementById('angoAssistantInput').value);};
+  window.addEventListener('resize',()=>{if(wrap.style.left)clampPosition();});
+}
+function angoAssistantAdd(text,who='bot'){
+  const box=document.getElementById('angoChat');if(!box)return;
+  const d=document.createElement('div');d.className=`ango-msg ${who}`;d.innerHTML=text;box.appendChild(d);box.scrollTop=box.scrollHeight;
+}
+function angoAssistantReply(input){
+  const q=String(input||'').trim();if(!q)return;
+  angoAssistantAdd(esc(q),'user');
+  const qn=q.toLowerCase();
+  if(!driveInventoryOnline){angoAssistantAdd('Neste momento não consigo consultar o inventário online. Tente novamente em instantes ou use a pesquisa normal do site.');document.getElementById('angoAssistantInput').value='';return;}
+  const available=(Array.isArray(cars)?cars:[]).filter(c=>c.published!==false&&c.status==='available');
+  const budget=(qn.match(/(?:até|ate|menos de|under|below)\s*\$?\s*([\d,.]+)/)||[])[1];
+  const max=budget?Number(String(budget).replace(/,/g,'')):Infinity;
+  const brands=['Toyota','Honda','Nissan','Mazda','Suzuki','Mitsubishi','Subaru','Volkswagen','BMW','Mercedes-Benz','Mercedes','Hyundai','Kia','Ford','Isuzu','Hino','Daihatsu'];
+  const brand=brands.find(b=>qn.includes(b.toLowerCase()));
+  const bodyMap=[['suv','SUV'],['pickup','Pick up'],['pick up','Pick up'],['sedan','Sedan'],['van','Van'],['minivan','Minivan'],['truck','Truck'],['hatchback','Hatchback']];
+  const body=bodyMap.find(x=>qn.includes(x[0]))?.[1];
+  let results=available.filter(c=>(!brand||String(c.brand||'').toLowerCase().includes(brand.toLowerCase()))&&(!body||String(c.body||'').toLowerCase()===body.toLowerCase())&&Number(c.price||0)<=max);
+  const modelWords=['hilux','ractis','freed','bongo','hiace','dyna','rav4','harrier','civic','fit','x-trail','serena','forester','jimny','cx-5'];
+  const model=modelWords.find(m=>qn.includes(m));if(model)results=results.filter(c=>String(c.model||'').toLowerCase().includes(model));
+  results=results.slice(0,4);
+  if(results.length){
+    const cards=results.map(c=>`<div class="ango-car"><b>${esc(c.brand)} ${esc(c.model)}</b><span>${esc(c.year||'')} · ${Number(c.price||0).toLocaleString('en-US')} USD</span><a href="/carro/${encodeURIComponent(c.id)}">Ver carro →</a></div>`).join('');
+    angoAssistantAdd(`Encontrei <strong>${results.length}</strong> opção(ões) no inventário atual:<div class="ango-results">${cards}</div>`);
+  }else{
+    angoAssistantAdd('Não encontrei uma opção que corresponda exatamente aos critérios. Tente indicar <strong>marca, modelo, tipo de carro ou orçamento</strong> e eu procuro novamente.');
+  }
+  document.getElementById('angoAssistantInput').value='';
+}
+
 document.addEventListener("DOMContentLoaded",async()=>{
+  initAngoAssistant();
   applySavedTheme();updateNotificationCount();
 
   // Inicializa a autenticação ANTES do carregamento do catálogo.
@@ -896,7 +974,7 @@ async function loadPublicPromotions(){
   const promos=data.filter(p=>new Date(p.starts_at).getTime()<=now&&(!p.ends_at||new Date(p.ends_at).getTime()>=now));
   if(!promos.length)return;
   promos.forEach(p=>addNotification('Nova promoção',p.title||'Há uma nova oferta disponível.','promo',`promo:${p.id}`));
-  box.innerHTML=`<button class="promo-arrow promo-prev" type="button" aria-label="Promoção anterior" onclick="movePromo(-1)"><i class="fa-solid fa-chevron-left"></i></button><div class="promo-viewport" id="promoViewport"><div class="banner-strip" id="promoGrid">${promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="detalhes.html?id=${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('')}</div></div><button class="promo-arrow promo-next" type="button" aria-label="Próxima promoção" onclick="movePromo(1)"><i class="fa-solid fa-chevron-right"></i></button>`;
+  box.innerHTML=`<button class="promo-arrow promo-prev" type="button" aria-label="Promoção anterior" onclick="movePromo(-1)"><i class="fa-solid fa-chevron-left"></i></button><div class="promo-viewport" id="promoViewport"><div class="banner-strip" id="promoGrid">${promos.map((p,i)=>`<div class="promo ${i%2?'dark':''}" style="${p.image_url?`background-image:linear-gradient(#0005,#0005),url('${String(p.image_url).replace(/'/g,"%27")}');background-size:cover;background-position:center;color:#fff`:''}"><b>${esc(p.title)}</b><strong>${p.discount?` -${esc(p.discount)}%`:''}</strong><small>${esc(p.subtitle||'')}</small>${p.car_id?`<a href="/carro/${encodeURIComponent(p.car_id)}" style="color:inherit">Ver oferta →</a>`:''}</div>`).join('')}</div></div><button class="promo-arrow promo-next" type="button" aria-label="Próxima promoção" onclick="movePromo(1)"><i class="fa-solid fa-chevron-right"></i></button>`;
   initPromoCarousel();
 }
 

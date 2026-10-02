@@ -8,8 +8,8 @@
       <h3>Convite para administrador</h3><p id="inviteInfo">Este convite foi enviado pelo WhatsApp.</p>
       <input id="acceptName" placeholder="Teu nome">
       <input id="acceptEmail" type="email" placeholder="O teu email">
-      <div class="password-field"><input id="acceptPass" type="password" placeholder="Criar senha (mín. 8 caracteres)"><button type="button" class="show-pass" data-target="acceptPass" aria-label="Mostrar senha">👁</button></div>
-      <div class="password-field"><input id="acceptPassConfirm" type="password" placeholder="Confirmar senha"><button type="button" class="show-pass" data-target="acceptPassConfirm" aria-label="Mostrar senha">👁</button></div>
+      <div class="password-field"><input id="acceptPass" type="password" minlength="12" placeholder="Criar senha (12+ caracteres, maiúscula, minúscula, número e símbolo)"><button type="button" class="show-pass" data-target="acceptPass" aria-label="Mostrar senha">👁</button></div>
+      <div class="password-field"><input id="acceptPassConfirm" type="password" minlength="12" placeholder="Confirmar senha"><button type="button" class="show-pass" data-target="acceptPassConfirm" aria-label="Mostrar senha">👁</button></div>
       <button onclick="acceptInvite()">Aceitar convite e criar conta</button>
       <p id="inviteMsg"></p>
     </div>
@@ -36,6 +36,10 @@
   <button type="submit"><i>☘</i> Convidar pelo WhatsApp</button>
 </form>
 <div id="adminsList"></div></section>
+
+<section id="usersSection" class="panel-card"><div class="section-head"><h2>👥 Utilizadores</h2><button class="secondary" type="button" onclick="loadUserStats()">Atualizar</button></div>
+<div id="userStats" class="user-stats-grid"><div><b>—</b><small>Contas criadas</small></div><div><b>—</b><small>Fizeram login</small></div><div><b>—</b><small>Logins hoje</small></div><div><b>—</b><small>Online agora</small></div></div>
+<div class="admin-search-wrap"><input id="userSearch" type="search" placeholder="Pesquisar utilizador por nome, email ou WhatsApp..." autocomplete="off"></div><div id="usersList"></div></section>
 
 <section id="settingsSection" class="panel-card admin-settings-menu hidden">
 <h2>⚙️ Definições</h2>

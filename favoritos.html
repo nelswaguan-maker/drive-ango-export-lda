@@ -11,7 +11,7 @@ async function loadFavorites(){
     else {try{cars=JSON.parse(localStorage.getItem('driveCars')||'[]').filter(c=>c.published!==false);}catch(e){cars=[];}}
   }
   const matches=cars.filter(c=>fav.has(String(c.id)));
-  grid.innerHTML=matches.length?matches.map(c=>`<article class="car-card"><a class="car-image-link" href="detalhes.html?id=${encodeURIComponent(c.id)}"><img src="${esc(c.image||c.images?.[0]||'')}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${money(c.price)}</div><a class="details-btn" href="detalhes.html?id=${encodeURIComponent(c.id)}">Ver detalhes</a></div></article>`).join(''):'<p>Nenhum dos teus favoritos está atualmente publicado.</p>';
+  grid.innerHTML=matches.length?matches.map(c=>`<article class="car-card"><a class="car-image-link" href="/carro/${encodeURIComponent(c.id)}"><img src="${esc(c.image||c.images?.[0]||'')}" alt="${esc(c.brand+' '+c.model)}"><span class="stock-label">Stock ${esc(c.stock||c.id)}</span></a><div class="info"><small>${esc(c.year)} · ${esc(c.brand)}</small><h3>${esc(c.model)}</h3><div class="price">${money(c.price)}</div><a class="details-btn" href="/carro/${encodeURIComponent(c.id)}">Ver detalhes</a></div></article>`).join(''):'<p>Nenhum dos teus favoritos está atualmente publicado.</p>';
 }
 loadFavorites();
 </script></body></html>

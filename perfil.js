@@ -193,6 +193,10 @@ $("profileForm")?.addEventListener("submit", async (event) => {
   setMessage("Perfil atualizado com sucesso.", "success");
 });
 
+function isStrongProfilePassword(password){
+  return typeof password === "string" && password.length >= 12 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password);
+}
+
 $("passwordForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!currentUser || !supabaseClient()) return;
@@ -200,8 +204,8 @@ $("passwordForm")?.addEventListener("submit", async (event) => {
   const password = $("newPassword").value;
   const confirm = $("confirmPassword").value;
 
-  if (password.length < 8) {
-    setMessage("A nova palavra-passe deve ter pelo menos 8 caracteres.", "error");
+  if (!isStrongProfilePassword(password)) {
+    setMessage("A palavra-passe deve ter pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo.", "error");
     return;
   }
 
