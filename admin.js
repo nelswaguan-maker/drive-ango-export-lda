@@ -59,6 +59,41 @@ async function loadPermissions(){
   if(!error&&data) currentPermissions={publish:!!data.publish,edit:!!data.edit,manageStatus:!!data.manage_status,delete:!!data.delete};
 }
 
+
+/* ===== ADMIN TURNSTILE ===== */
+const ANGO_ADMIN_TURNSTILE_SITE_KEY="0x4AAAAAAFM4-awkXpbdtvAa";
+const angoAdminTurnstileWidgets={};
+const angoAdminTurnstileTokens={};
+function renderAngoAdminTurnstile(id){
+  const el=document.getElementById(id);
+  if(!el||!window.turnstile||el.dataset.rendered==="1")return;
+  try{
+    angoAdminTurnstileWidgets[id]=window.turnstile.render(el,{sitekey:ANGO_ADMIN_TURNSTILE_SITE_KEY,theme:"auto",callback:t=>{angoAdminTurnstileTokens[id]=t;},"expired-callback":()=>{angoAdminTurnstileTokens[id]="";},"error-callback":()=>{angoAdminTurnstileTokens[id]="";}});
+    el.dataset.rendered="1";
+  }catch(e){console.warn("Turnstile admin ainda não disponível",e);}
+}
+async function requireAngoAdminTurnstile(id){
+  renderAngoAdminTurnstile(id);
+  const started=Date.now();
+  while(Date.now()-started<15000){
+    if(angoAdminTurnstileTokens[id])return angoAdminTurnstileTokens[id];
+    await new Promise(r=>setTimeout(r,250));
+    renderAngoAdminTurnstile(id);
+  }
+  if(id&&document.getElementById(id))alert("A verificação de segurança ainda não ficou pronta. Confirma o Turnstile e tenta novamente.");
+  return "";
+}
+function resetAngoAdminTurnstile(id){
+  angoAdminTurnstileTokens[id]="";
+  const widget=angoAdminTurnstileWidgets[id];
+  if(window.turnstile&&widget!==undefined){try{window.turnstile.reset(widget);}catch(_){}}
+}
+function initAngoAdminTurnstile(){
+  ["turnstile-admin-login","turnstile-admin-signup"].forEach(renderAngoAdminTurnstile);
+  let tries=0;const timer=setInterval(()=>{["turnstile-admin-login","turnstile-admin-signup"].forEach(renderAngoAdminTurnstile);tries++;if(tries>60)clearInterval(timer);},250);
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",initAngoAdminTurnstile);else initAngoAdminTurnstile();
+
 function guard(){
   if(!currentAdminUser){ $("loginScreen")?.classList.remove("hidden"); $("panel")?.classList.add("hidden"); return false; }
   $("loginScreen")?.classList.add("hidden"); $("panel")?.classList.remove("hidden"); return true;
@@ -99,7 +134,10 @@ async function loginAdmin(event){
   const button=$("adminLoginSubmit");
   if(button){button.disabled=true;button.textContent="A entrar...";}
   try{
-  const {data,error}=await sb().auth.signInWithPassword({email,password:pass});
+  const captchaToken=await requireAngoAdminTurnstile("turnstile-admin-login");
+  if(!captchaToken)return;
+  const {data,error}=await sb().auth.signInWithPassword({email,password:pass,options:{captchaToken}});
+  resetAngoAdminTurnstile("turnstile-admin-login");
   if(error){
     const msg=String(error.message||"Não foi possível autenticar esta conta.");
     const lower=msg.toLowerCase();
@@ -582,7 +620,10 @@ async function acceptInvite(){
   if(name.length<2||!isStrongAdminPassword(pass)||pass!==confirm||!email){if(msg)msg.textContent="Preenche nome, email e duas senhas iguais. A senha deve ter 12+ caracteres, maiúscula, minúscula, número e símbolo.";return;}
   if(!sb()){if(msg)msg.textContent="Supabase não configurado.";return;}
   const button=document.querySelector("#inviteAccess button");if(button){button.disabled=true;button.textContent="A criar conta...";}
-  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:window.location.origin+"/admin.html?invite="+encodeURIComponent(token)}});
+  const captchaToken=await requireAngoAdminTurnstile("turnstile-admin-signup");
+  if(!captchaToken){if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}return;}
+  const {data,error}=await sb().auth.signUp({email,password:pass,options:{data:{name},emailRedirectTo:window.location.origin+"/admin.html?invite="+encodeURIComponent(token),captchaToken}});
+  resetAngoAdminTurnstile("turnstile-admin-signup");
   if(error){
     if(button){button.disabled=false;button.textContent="Aceitar convite e criar conta";}
     msg.textContent=error.message;return;

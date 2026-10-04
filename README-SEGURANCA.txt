@@ -25,3 +25,12 @@ Este pacote não garante, por si só, a remoção de um alerta do Google Safe Br
 
 
 PROPRIETÁRIOS PRINCIPAIS: nelswaguan@gmail.com, editojosejoaquim812@gmail.com e jojomilagre@gmail.com.
+
+
+CAPTCHA AUTH — NOTA DE CONFIGURAÇÃO
+O Supabase atualmente suporta hCaptcha e Cloudflare Turnstile para proteção de sign-up, sign-in e recuperação de senha. Não foi colocado um reCAPTCHA Google falso/sem validação de servidor. Para ativar, configurar o provider e a Secret Key no Supabase > Authentication > Bot and Abuse Protection e depois inserir o componente/token no frontend.
+
+CORREÇÃO 2026-10-04 — LEITURA PÚBLICA DO CATÁLOGO
+- Separadas as policies SELECT de drive_cars: visitantes/autenticados podem ler anúncios publicados; apenas administradores podem ler anúncios não publicados.
+- Isto evita exigir que um utilizador anónimo execute is_current_user_admin(), função concedida apenas a authenticated.
+- O loading inicial permanece bloqueado até o catálogo atual do Supabase carregar, com limite de 10 segundos.

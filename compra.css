@@ -7,3 +7,24 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f6f7f9;color:#2
 .footer-sbt-notice{display:flex;align-items:flex-start;gap:10px;max-width:900px;margin:18px auto 8px;padding:13px 15px;border:1px solid #f0c36d;border-left:5px solid #e90016;border-radius:9px;background:#fff8df;color:#292c3d;text-align:left}.footer-sbt-notice strong{display:block;margin-bottom:4px}.footer-sbt-notice p{margin:0;font-size:12px;line-height:1.5;color:#5f594a}.footer-copyright{text-align:center;padding:10px;font-size:13px;color:#777}
 
 .buy-contact{margin-top:12px}.secondary-submit{display:flex;align-items:center;justify-content:center;box-sizing:border-box;text-decoration:none;background:#168b45}.secondary-submit:hover{filter:brightness(.95)}
+
+/* Rodapé geral — Idiomas + Câmbios */
+.site-footer{background:#f7f7f7;padding:50px 5%;margin-top:60px;color:#292c3d}.site-footer .footer-links details{border-bottom:1px solid #ccc;padding:18px 0}.site-footer .footer-links summary{font-size:22px;cursor:pointer}.site-footer .footer-links a{display:block;padding:8px 0;color:#555;text-decoration:none}.site-footer .social{padding:40px 0;border-bottom:1px solid #ccc}.site-footer .social i{font-size:30px;margin-right:25px}.site-footer .footer-contact-link{color:inherit;text-decoration:none;font-weight:600}.site-footer .footer-bottom{display:flex;flex-direction:column;gap:16px;font-size:18px}.site-footer .footer-bottom select{width:310px;max-width:100%;padding:16px;border:1px solid #ccc;border-radius:6px;background:#fff;font-size:16px}.footer-language-currency{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.footer-language-currency label{font-weight:700}.site-footer .footer-copyright{text-align:center;padding:13px 15px 4px;font-size:13px;color:#777}.dark-mode .site-footer{background:#171717;color:#eee}.dark-mode .site-footer .footer-links a{color:#ccc}.dark-mode .site-footer .footer-bottom select{background:#222;color:#eee;border-color:#555}.dark-mode .site-footer .footer-copyright{color:#aaa}@media(max-width:700px){.site-footer{padding:35px 20px}.site-footer .footer-links summary{font-size:19px}.site-footer .footer-bottom{font-size:16px}.footer-language-currency{align-items:flex-start;flex-direction:column}.site-footer .footer-bottom select{width:100%}}
+
+/* ===== TEMA: texto acompanha o fundo ===== */
+body.dark-mode{background:#12141a;color:#f4f4f4}
+.dark-mode header{background:#171a21;color:#f4f4f4;border-color:#e90016}
+.dark-mode header a{color:#f4f4f4}
+.dark-mode main .card{background:#1b1f27;color:#f4f4f4}
+.dark-mode .spec{border-color:#3b424e;background:#20252e}
+.dark-mode .spec small,.dark-mode .stock{color:#b7bdc8}
+.dark-mode .field input,.dark-mode .field select,.dark-mode .field textarea{background:#20252e;color:#f4f4f4;border-color:#3b424e}
+.dark-mode .payment-option span{background:#20252e;color:#f4f4f4;border-color:#3b424e}
+.dark-mode .summary{border-color:#343842}
+.dark-mode .site-footer{background:#171717;color:#f4f4f4}
+.dark-mode .site-footer .footer-links details,.dark-mode .site-footer .social{border-color:#343842}
+.dark-mode .site-footer .footer-links a{color:#ddd}
+.dark-mode .site-footer .footer-bottom select{background:#222;color:#fff;border-color:#555}
+.dark-mode .site-footer .footer-copyright{color:#aaa}
+.dark-mode .footer-sbt-notice{background:#2b2618;color:#f2ead2;border-color:#806a35}
+.dark-mode .footer-sbt-notice p{color:#ddd4bd}

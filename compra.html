@@ -1,1 +1,25 @@
-<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comprar agora — DRIVE</title><link rel="stylesheet" href="compra.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></head><body><header><a href="index.html">← DRIVE</a><strong>COMPRAR AGORA</strong></header><main id="buyApp"><div class="loading">A carregar...</div></main><footer class="panel-copyright"><div class="footer-sbt-notice">⚠️<div><strong>Aviso importante</strong><p>A DRIVE não é a SBT Japan. Somos uma facilitadora local independente. Pode fazer um pedido através do nosso site e entraremos em contacto com a SBT Japan para tratar da consulta. Disponibilidade, preço e condições devem ser confirmados antes da compra.</p></div></div><div class="footer-copyright">© Angó Global Cars 2026 LTD</div></footer><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="cars-data.js"></script><script src="compra.js"></script></body></html>
+<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Comprar agora — DRIVE</title><link rel="stylesheet" href="compra.css"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></head><body><header><a href="index.html">← DRIVE</a><strong>COMPRAR AGORA</strong></header><main id="buyApp"><div class="loading">A carregar...</div></main><footer class="site-footer">
+  <div class="footer-links">
+    <details><summary>Comprar</summary><a href="index.html#results">Todos os carros</a><a href="index.html#precos">Por preço</a></details>
+    <details><summary>Suporte</summary><a href="index.html#results">Ajuda</a><a href="index.html#footerContact">Contacto</a></details>
+    <details><summary>Sobre Nós</summary><a href="index.html">Sobre o Drive</a><a href="index.html#modelos">Como funciona</a></details>
+    <details><summary>Consulta</summary><a href="index.html#results">Pedido de cotação</a><a href="index.html#results">Envio</a></details>
+  </div>
+  <div class="social"><h3>Conecte-se conosco</h3><p><a href="index.html#footerContact" class="footer-contact-link">WhatsApp / Ligar: contacto disponível no painel Admin.</a></p><div><i class="fa-brands fa-youtube"></i><i class="fa-brands fa-facebook"></i><i class="fa-brands fa-instagram"></i></div></div>
+  <div class="footer-bottom">
+    <p>Notícias do DRIVE ↗</p>
+    <p>Boletim de Notícias ↗</p>
+    <label>Escritório Global</label>
+    <select aria-label="País"><option>Selecione o país</option><option>Moçambique</option><option>França</option><option>Japão</option></select>
+    <div class="footer-language-currency">
+      <label>🌐 Idiomas</label>
+      <select aria-label="Idioma" data-drive-language><option value="pt">Português</option><option value="en">English</option></select>
+      <label>💱 Câmbios</label>
+      <select data-drive-currency onchange="window.driveCurrency&&driveCurrency.set(this.value)" aria-label="Moeda"><option value="MT">MT (Metical)</option><option value="USD">USD (Dólar)</option></select>
+    </div>
+    <p data-drive-rate>A obter câmbio…</p>
+    <p>📍 MOZAMBIQUE</p>
+    <small><a href="termos.html">Termos de Uso</a><br><br><a href="politica-privacidade.html">Política de Privacidade</a></small>
+    <div class="footer-copyright">© Angó Global Cars 2026 LTD</div>
+  </div>
+</footer><script>document.addEventListener("DOMContentLoaded",()=>{const key="driveTheme";const apply=()=>{const t=localStorage.getItem(key)||"system";const dark=t==="dark"||(t==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.body.classList.toggle("dark-mode",dark)};apply();window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if((localStorage.getItem(key)||"system")==="system")apply()});});</script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="cars-data.js"></script><script src="currency.js"></script><script src="compra.js"></script><script>document.addEventListener("DOMContentLoaded",()=>{const KEY="driveLanguage";const el=document.querySelector("[data-drive-language]");if(!el)return;el.value=localStorage.getItem(KEY)||"pt";el.addEventListener("change",()=>{localStorage.setItem(KEY,el.value);document.documentElement.lang=el.value;});});</script></body></html>

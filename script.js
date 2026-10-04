@@ -63,6 +63,7 @@ function resolvedCarBrand(c){
 }
 function brandMatches(a,b){return canonicalBrand(a).toLowerCase()===canonicalBrand(b).toLowerCase();}
 const bodies=["Sedan","Coupe","Hatchback","Station Wagon","SUV","Pick up","Truck","Van","Minivan","Bus/Minibus"];
+const INITIAL_CATALOG_SESSION_KEY="driveInitialCatalogLoadedV1";
 
 function loadCars(){
   let stored=JSON.parse(localStorage.getItem(KEY)||"null");
@@ -77,25 +78,35 @@ let cars=loadCars();
 let driveInventoryOnline=false;
 
 async function loadPublicCars(){
-  // Mantém o último catálogo local enquanto o Supabase responde.
-  // Assim uma falha temporária/RLS não transforma todos os contadores em (0).
-  const cached=Array.isArray(cars)?cars:[];
-  if(window.driveCarsData && window.driveSupabase){
-    try{
-      const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
-      if(!error){
-        const online=Array.isArray(data)?data:[];
-        cars=online;
-        driveInventoryOnline=true;
-        localStorage.setItem(KEY,JSON.stringify(cars));
-        return;
-      }
-      console.warn("Catálogo online:",error.message);
-    }catch(e){console.warn("Catálogo online:",e);}
+  // O catálogo público deve vir primeiro do Supabase.
+  // Não renderizamos o cache/localStorage antes dos dados atuais chegarem,
+  // para evitar que anúncios antigos apareçam por alguns segundos.
+  if(!window.driveCarsData || !window.driveSupabase){
+    driveInventoryOnline=false;
+    throw new Error("Serviço de catálogo indisponível.");
   }
-  // Se o online falhar, usa o último catálogo local em vez de apagar a contagem.
-  driveInventoryOnline=false;
-  cars=cached;
+  const {data,error}=await window.driveCarsData.fetchCars({publicOnly:true});
+  if(error) throw error;
+  cars=Array.isArray(data)?data:[];
+  driveInventoryOnline=true;
+  localStorage.setItem(KEY,JSON.stringify(cars));
+  return cars;
+}
+
+function finishInitialLoading(error=null){
+  const el=document.getElementById("driveInitialLoading");
+  if(!el)return;
+  if(error){
+    el.classList.add("is-error");
+    const card=el.querySelector(".drive-loading-card");
+    if(card){
+      card.innerHTML=`<strong>Não foi possível atualizar o catálogo.</strong>
+        <span>Verifica a ligação e tenta novamente.</span>
+        <button class="drive-loading-retry" type="button" onclick="location.reload()">Tentar novamente</button>`;
+    }
+    return;
+  }
+  el.classList.add("is-hidden");
 }
 function subscribePublicCars(){
   if(!window.driveCarsData || window.publicCarsRealtime) return;
@@ -652,22 +663,85 @@ async function requireLegalConsent(user){
 }
 function showLegalConsentGate(){
   return new Promise(resolve=>{
-    if(document.getElementById("legalGate"))return;
+    const existing=document.getElementById("legalGate");
+    if(existing){
+      existing.querySelector("#gateAccept")?.addEventListener("click",()=>resolve(true),{once:true});
+      return;
+    }
     const wrap=document.createElement("div");wrap.id="legalGate";wrap.className="legal-gate";
-    wrap.innerHTML=`<div class="legal-gate-box"><h2>Antes de continuar</h2><p>Para usar o Drive ANGO Export, confirma que leste e aceitas a Política de Privacidade e os Termos de Uso.</p><label class="legal-check"><input id="gateConsent" type="checkbox"> <span>Aceito a <a href="politica-privacidade.html" target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">Política de Privacidade</a> e os <a href="termos.html" target="_blank">Termos de Uso</a>.</span></label><button id="gateAccept" disabled>Continuar</button></div>`;
+    wrap.innerHTML=`<div class="legal-gate-box" role="dialog" aria-modal="true" aria-labelledby="legalGateTitle">
+      <div class="legal-gate-brand">ANGÓ GLOBAL CARS</div>
+      <h2 id="legalGateTitle">Antes de continuar</h2>
+      <p>Para continuar a utilizar o site, lê a Política de Privacidade e os Termos de Uso e confirma a tua aceitação.</p>
+      <div class="legal-gate-links"><a href="politica-privacidade.html" target="_blank" rel="noopener noreferrer">Política de Privacidade</a><a href="termos.html" target="_blank" rel="noopener noreferrer">Termos de Uso</a></div>
+      <label class="legal-check legal-gate-check"><input id="gateConsent" type="checkbox"> <span>Li e aceito a Política de Privacidade e os Termos de Uso.</span></label>
+      <button id="gateAccept" type="button" disabled>✅ Aceito e continuar</button>
+    </div>`;
     document.body.appendChild(wrap);
     const check=wrap.querySelector("#gateConsent"),btn=wrap.querySelector("#gateAccept");
-    check.onchange=()=>btn.disabled=!check.checked;
-    btn.onclick=async()=>{
+    check.addEventListener("change",()=>{btn.disabled=!check.checked;});
+    btn.addEventListener("click",async()=>{
       const user=currentClientUser;
       if(!user){wrap.remove();resolve(false);return;}
+      btn.disabled=true;btn.textContent="A guardar…";
       const now=new Date().toISOString();
       const {error}=await window.driveSupabase.from("profiles").upsert({id:user.id,email:user.email||"",privacy_accepted_at:now,terms_accepted_at:now},{onConflict:"id"});
-      if(error){alert("Não foi possível guardar a aceitação. Tenta novamente.");return;}
+      if(error){btn.disabled=false;btn.textContent="✅ Aceito e continuar";alert("Não foi possível guardar a aceitação. Tenta novamente.");return;}
       wrap.remove();resolve(true);
-    };
+    });
   });
 }
+
+const ANGO_TURNSTILE_SITE_KEY = "0x4AAAAAAFM4-awkXpbdtvAa";
+const angoTurnstileWidgets = {};
+const angoTurnstileTokens = {};
+
+function renderAngoTurnstile(id){
+  const el=document.getElementById(id);
+  if(!el || !window.turnstile || el.dataset.rendered==="1") return;
+  try{
+    const widget=window.turnstile.render(el,{
+      sitekey:ANGO_TURNSTILE_SITE_KEY,
+      theme:"auto",
+      callback:(token)=>{angoTurnstileTokens[id]=token;},
+      "expired-callback":()=>{angoTurnstileTokens[id]="";},
+      "error-callback":()=>{angoTurnstileTokens[id]="";}
+    });
+    angoTurnstileWidgets[id]=widget;
+    el.dataset.rendered="1";
+  }catch(err){ console.warn("Turnstile ainda não disponível:",err); }
+}
+function resetAngoTurnstile(id){
+  angoTurnstileTokens[id]="";
+  const widget=angoTurnstileWidgets[id];
+  if(window.turnstile && widget!==undefined){ try{window.turnstile.reset(widget);}catch(e){} }
+}
+function getAngoTurnstileToken(id){
+  renderAngoTurnstile(id);
+  return angoTurnstileTokens[id]||"";
+}
+async function requireAngoTurnstile(id){
+  renderAngoTurnstile(id);
+  const started=Date.now();
+  while(Date.now()-started<15000){
+    const token=angoTurnstileTokens[id]||"";
+    if(token)return token;
+    await new Promise(r=>setTimeout(r,250));
+    if(!document.getElementById(id))break;
+  }
+  alert("A verificação de segurança ainda não ficou pronta. Confirma o Turnstile e tenta novamente.");
+  return "";
+}
+function initAngoTurnstile(){
+  const ids=["turnstile-login","turnstile-signup","turnstile-reset"];
+  let tries=0;
+  const timer=setInterval(()=>{
+    ids.forEach(renderAngoTurnstile);
+    tries++;
+    if(tries>40 || ids.every(id=>document.getElementById(id)?.dataset.rendered==="1")) clearInterval(timer);
+  },250);
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",initAngoTurnstile); else initAngoTurnstile();
 
 function isStrongPassword(password){
   return typeof password === "string" && password.length >= 12 &&
@@ -688,7 +762,10 @@ async function clientSignup(e){
   form.dataset.busy="1";const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A criar conta...";}
   const pendingInvite=localStorage.getItem("drivePendingAdminInvite");
   const emailRedirectTo=window.location.origin+(pendingInvite?"/admin.html?invite="+encodeURIComponent(pendingInvite):"/index.html?openLogin=1");
-  const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone},emailRedirectTo}});
+  const captchaToken=await requireAngoTurnstile("turnstile-signup");
+  if(!captchaToken){form.dataset.busy="0";if(button){button.disabled=false;button.textContent="Criar conta";}return;}
+  const {data,error}=await window.driveSupabase.auth.signUp({email,password:pass,options:{data:{name,phone},emailRedirectTo,captchaToken}});
+  resetAngoTurnstile("turnstile-signup");
   form.dataset.busy="0";if(button){button.disabled=false;button.textContent="Criar conta";}
   if(error){const msg=(error.message||"").toLowerCase();if(msg.includes("rate limit")||msg.includes("email rate limit"))alert("O Supabase atingiu temporariamente o limite de emails. Não repitas a tentativa agora; aguarda o limite ser renovado e tenta novamente uma vez.");else alert(error.message);return;}
   if(data.session){
@@ -725,7 +802,10 @@ async function clientLogin(e){
   if(button){button.disabled=true;button.textContent="A verificar...";}
   try{
     // A sessão só é considerada válida depois desta resposta do Supabase.
-    const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass});
+    const captchaToken=await requireAngoTurnstile("turnstile-login");
+    if(!captchaToken)return;
+    const {data,error}=await window.driveSupabase.auth.signInWithPassword({email,password:pass,options:{captchaToken}});
+    resetAngoTurnstile("turnstile-login");
     if(error || !data?.user){
       const msg=String(error?.message||"Não foi possível autenticar esta conta.");
       const lower=msg.toLowerCase();
@@ -776,7 +856,10 @@ async function sendPasswordReset(e){
   e.preventDefault();if(!window.driveSupabase){alert("O login online ainda não foi configurado.");return;}
   const email=document.getElementById("forgotEmail").value.trim().toLowerCase();if(!email)return;
   const button=e.currentTarget.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent="A enviar...";}
-  const {error}=await window.driveSupabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+"/index.html?reset=1"});
+  const captchaToken=await requireAngoTurnstile("turnstile-reset");
+  if(!captchaToken){if(button){button.disabled=false;button.textContent="Enviar link de recuperação";}return;}
+  const {error}=await window.driveSupabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+"/index.html?reset=1",captchaToken});
+  resetAngoTurnstile("turnstile-reset");
   if(button){button.disabled=false;button.textContent="Enviar link de recuperação";}
   if(error){alert("Não foi possível enviar o link: "+error.message);return;}
   alert("Se esse email estiver registado, receberás um link para redefinir a senha. Verifica também o spam.");
@@ -853,75 +936,128 @@ async function initClientModal(){
 }
 
 
-/* ===== ANGO ASSISTANT — recepcionista virtual ligado ao inventário real ===== */
+/* ===== ANGO ASSISTANT — contexto + inventário real (sem inventar dados) ===== */
+const ANGO_ASSISTANT_MEMORY_KEY="angoAssistantMemoryV2";
+let angoAssistantState={language:"pt",brand:"",model:"",body:"",fuel:"",minPrice:null,maxPrice:null,minYear:null,maxYear:null,seats:null,lastResults:[],lastQuery:""};
+function angoAssistantLoadMemory(){try{const x=JSON.parse(localStorage.getItem(ANGO_ASSISTANT_MEMORY_KEY)||"null");if(x&&typeof x==='object')angoAssistantState={...angoAssistantState,...x};}catch(_){}}
+function angoAssistantSaveMemory(){try{localStorage.setItem(ANGO_ASSISTANT_MEMORY_KEY,JSON.stringify({...angoAssistantState,lastResults:(angoAssistantState.lastResults||[]).slice(0,8)}));}catch(_){}}
+function angoAssistantClearMemory(){angoAssistantState={language:"pt",brand:"",model:"",body:"",fuel:"",minPrice:null,maxPrice:null,minYear:null,maxYear:null,seats:null,lastResults:[],lastQuery:""};angoAssistantSaveMemory();}
+function angoAssistantMoney(n){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0})+' USD';}
+function angoAssistantLang(q){return /\b(hello|hi|hey|please|looking for|i need|cheap|under|above|year|price|fuel|automatic|manual)\b/i.test(q)?'en':'pt';}
+function angoAssistantContactLink(){
+  const n=String(generalSiteContact?.whatsapp||generalSiteContact?.phone||'').replace(/\D/g,'');
+  if(!n)return '';
+  const msg=angoAssistantState.language==='en'?'Hello, I was helped by the ANGO Assistant and would like more information about a vehicle.':'Olá, fui atendido pelo ANGO Assistant e gostaria de mais informações sobre um veículo.';
+  return `https://wa.me/${n}?text=${encodeURIComponent(msg)}`;
+}
+function angoAssistantParse(q){
+  const n=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const next={...angoAssistantState,lastQuery:q};
+  if(/\b(limpa|esquece|reset|recomecar|comecar de novo|clear|reset memory)\b/.test(n)){angoAssistantClearMemory();return angoAssistantState;}
+  const brands=['Toyota','Honda','Nissan','Mazda','Suzuki','Mitsubishi','Subaru','Volkswagen','BMW','Mercedes-Benz','Mercedes','Hyundai','Kia','Ford','Isuzu','Hino','Daihatsu','Lexus','Audi','Volvo','Jeep','Peugeot','Jaguar','Citroen','Land Rover'];
+  const brand=brands.find(b=>n.includes(b.toLowerCase())); if(brand)next.brand=brand;
+  const models=['hilux','ractis','freed','bongo','hiace','dyna','axio','fielder','corolla','rav4','harrier','civic','fit','cr-v','hr-v','vezel','x-trail','serena','forester','jimny','cx-5','cx-3','canter','fuso','prado','land cruiser','noah','voxy','sienta','wish','aqua','prius','yaris','vitz','alphard','vellfire','crown','mark x','note','navara','caravan','march','demio','atenza','axela','premacy','familia','swift','every','wagon r','alto','solio','pajero','outlander','delica','lancer','impreza','legacy','levorg','d-max','elf','giga','golf','polo','passat','tiguan','transporter','sprinter','vito','tucson','santa fe','sportage','sorento','picanto','carnival'];
+  const model=models.find(m=>n.includes(m)); if(model)next.model=model;
+  const bodies=[['suv','SUV'],['pick-up','Pick up'],['pickup','Pick up'],['pick up','Pick up'],['sedan','Sedan'],['coupe','Coupe'],['hatchback','Hatchback'],['station wagon','Station Wagon'],['wagon','Station Wagon'],['minivan','Minivan'],['bus','Bus/Minibus'],['minibus','Bus/Minibus'],['truck','Truck'],['van','Van']];
+  const body=bodies.find(([k])=>n.includes(k)); if(body)next.body=body[1];
+  const fuels=[['gasolina','Gasolina'],['petrol','Gasolina'],['diesel','Diesel'],['hibrido','Híbrido'],['hybrid','Híbrido'],['eletrico','Elétrico'],['electric','Elétrico']];
+  const fuel=fuels.find(([k])=>n.includes(k)); if(fuel)next.fuel=fuel[1];
+  const max=n.match(/(?:ate|até|menos de|under|below|no maximo|no maximo de|budget(?:o)? de)\s*(?:usd|us\$|\$)?\s*([\d\s.,]+)\s*(?:usd|dolar|dollars?)?/i);
+  if(max)next.maxPrice=Number(max[1].replace(/[^0-9]/g,''));
+  const min=n.match(/(?:a partir de|acima de|mais de|from|above|over|minimo de)\s*(?:usd|us\$|\$)?\s*([\d\s.,]+)/i);
+  if(min)next.minPrice=Number(min[1].replace(/[^0-9]/g,''));
+  const years=[...n.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m=>Number(m[1]));
+  if(years.length===1)next.minYear=years[0];
+  if(years.length>=2){next.minYear=Math.min(...years);next.maxYear=Math.max(...years);}
+  const seats=n.match(/(?:\b| )([2-9]|10|11|12)\s*(?:lugares|pessoas|places|seats)/i);if(seats)next.seats=Number(seats[1]);
+  if(/\b(automatic|automatica|automatico|auto|at)\b/i.test(n))next.trans='AT';
+  if(/\bmanual\b/i.test(n))next.trans='MT';
+  if(/\b(mais barato|cheapest|lowest|menor preco|menor price)\b/i.test(n))next.sort='price_asc';
+  if(/\b(mais caro|highest|maior preco|highest price)\b/i.test(n))next.sort='price_desc';
+  if(/\b(apenas|somente|so|only)\b.*\b(disponivel|disponiveis|available)\b/i.test(n))next.onlyAvailable=true;
+  return next;
+}
+function angoAssistantFilter(state){
+  let list=(Array.isArray(cars)?cars:[]).filter(c=>c.published!==false&&c.status==='available');
+  const norm=x=>String(x||'').toLowerCase();
+  if(state.brand)list=list.filter(c=>norm(c.brand).includes(norm(state.brand)));
+  if(state.model)list=list.filter(c=>norm(c.model).includes(norm(state.model)));
+  if(state.body)list=list.filter(c=>norm(c.body)===norm(state.body));
+  if(state.fuel)list=list.filter(c=>norm(c.fuel)===norm(state.fuel));
+  if(state.minPrice!=null)list=list.filter(c=>Number(c.price||0)>=state.minPrice);
+  if(state.maxPrice!=null)list=list.filter(c=>Number(c.price||0)<=state.maxPrice);
+  if(state.minYear!=null)list=list.filter(c=>Number(c.year||0)>=state.minYear);
+  if(state.maxYear!=null)list=list.filter(c=>Number(c.year||0)<=state.maxYear);
+  if(state.seats!=null)list=list.filter(c=>Number(c.seats||0)>=state.seats);
+  if(state.trans)list=list.filter(c=>norm(c.trans).includes(norm(state.trans)) || (state.trans==='AT'&&/auto/i.test(norm(c.trans))) || (state.trans==='MT'&&/manual/i.test(norm(c.trans))));
+  if(state.sort==='price_asc')list.sort((a,b)=>Number(a.price||0)-Number(b.price||0));
+  if(state.sort==='price_desc')list.sort((a,b)=>Number(b.price||0)-Number(a.price||0));
+  return list;
+}
+function angoAssistantQuerySummary(state){
+  const parts=[];if(state.brand)parts.push(state.brand);if(state.model)parts.push(state.model);if(state.body)parts.push(state.body);if(state.fuel)parts.push(state.fuel);if(state.minPrice!=null)parts.push('a partir de '+angoAssistantMoney(state.minPrice));if(state.maxPrice!=null)parts.push('até '+angoAssistantMoney(state.maxPrice));if(state.minYear!=null)parts.push(state.maxYear&&state.maxYear!==state.minYear?`${state.minYear}-${state.maxYear}`:`${state.minYear}+`);if(state.seats)parts.push(`${state.seats}+ lugares`);return parts.join(' · ');
+}
 function initAngoAssistant(){
   if(document.getElementById('angoAssistant'))return;
-  const wrap=document.createElement('div');wrap.id='angoAssistant';wrap.innerHTML=`<button id="angoAssistantBtn" type="button" aria-label="Abrir ANGO Assistant">🤖</button><section id="angoAssistantPanel" aria-live="polite"><header><strong>🤖 ANGO ASSISTANT</strong><button type="button" id="angoAssistantClose">×</button></header><div id="angoChat"><div class="ango-msg bot">👋 Olá! Sou o recepcionista virtual da Angó Global Cars. Posso ajudá-lo a encontrar um carro.</div></div><form id="angoAssistantForm"><input id="angoAssistantInput" autocomplete="off" placeholder="Ex.: Toyota até 10000 USD"><button>Enviar</button></form></section>`;
+  angoAssistantLoadMemory();
+  const wrap=document.createElement('div');wrap.id='angoAssistant';wrap.innerHTML=`<button id="angoAssistantBtn" type="button" aria-label="Abrir ANGO Assistant"><svg class="ango-bot-icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="16" width="40" height="34" rx="10" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="24" cy="33" r="3" fill="currentColor"/><circle cx="40" cy="33" r="3" fill="currentColor"/><path d="M24 42h16M32 8v8M27 8h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M8 28h4M52 28h4" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg></button><section id="angoAssistantPanel" aria-live="polite"><header><strong><svg class="ango-bot-icon ango-bot-icon-header" viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="16" width="40" height="34" rx="10" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="24" cy="33" r="3" fill="currentColor"/><circle cx="40" cy="33" r="3" fill="currentColor"/><path d="M24 42h16M32 8v8M27 8h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M8 28h4M52 28h4" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg> ANGO ASSISTANT</strong><button type="button" id="angoAssistantClose">×</button></header><div id="angoChat"><div class="ango-msg bot">👋 Olá! Sou o ANGO ASSISTANT. Posso conversar contigo, lembrar o que estás a procurar durante a sessão e consultar apenas os carros realmente disponíveis.</div></div><form id="angoAssistantForm"><input id="angoAssistantInput" autocomplete="off" placeholder="Ex.: Toyota até 10.000 USD"><button>Enviar</button></form></section>`;
   document.body.appendChild(wrap);
-  const panel=document.getElementById('angoAssistantPanel');
-  const btn=document.getElementById('angoAssistantBtn');
+  const panel=document.getElementById('angoAssistantPanel'),btn=document.getElementById('angoAssistantBtn');
   let dragging=false,moved=false,startX=0,startY=0,startLeft=0,startTop=0;
-  try{
-    const pos=JSON.parse(localStorage.getItem('angoAssistantPosition')||'null');
-    if(pos&&Number.isFinite(pos.left)&&Number.isFinite(pos.top)){
-      wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${Math.max(6,Math.min(pos.left,window.innerWidth-70))}px`;wrap.style.top=`${Math.max(6,Math.min(pos.top,window.innerHeight-70))}px`;
-    }
-  }catch(_){ }
-  const clampPosition=()=>{
-    const rect=wrap.getBoundingClientRect();
-    const left=Math.max(6,Math.min(rect.left,window.innerWidth-64));
-    const top=Math.max(6,Math.min(rect.top,window.innerHeight-64));
-    wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${left}px`;wrap.style.top=`${top}px`;
-    try{localStorage.setItem('angoAssistantPosition',JSON.stringify({left,top}));}catch(_){ }
-  };
+  try{const pos=JSON.parse(localStorage.getItem('angoAssistantPosition')||'null');if(pos&&Number.isFinite(pos.left)&&Number.isFinite(pos.top)){wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${Math.max(6,Math.min(pos.left,window.innerWidth-70))}px`;wrap.style.top=`${Math.max(6,Math.min(pos.top,window.innerHeight-70))}px`;}}catch(_){}
+  const clampPosition=()=>{const rect=wrap.getBoundingClientRect();const left=Math.max(6,Math.min(rect.left,window.innerWidth-64));const top=Math.max(6,Math.min(rect.top,window.innerHeight-64));wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${left}px`;wrap.style.top=`${top}px`;try{localStorage.setItem('angoAssistantPosition',JSON.stringify({left,top}));}catch(_){}};
   const pointerStart=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;dragging=true;moved=false;const r=wrap.getBoundingClientRect();startX=e.clientX;startY=e.clientY;startLeft=r.left;startTop=r.top;btn.setPointerCapture?.(e.pointerId);};
   const pointerMove=e=>{if(!dragging)return;const dx=e.clientX-startX,dy=e.clientY-startY;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;if(!moved)return;wrap.style.right='auto';wrap.style.bottom='auto';wrap.style.left=`${Math.max(6,Math.min(startLeft+dx,window.innerWidth-64))}px`;wrap.style.top=`${Math.max(6,Math.min(startTop+dy,window.innerHeight-64))}px`;};
   const pointerEnd=e=>{if(!dragging)return;dragging=false;btn.releasePointerCapture?.(e.pointerId);if(moved){clampPosition();btn.dataset.skipClick='1';setTimeout(()=>delete btn.dataset.skipClick,80);}};
-  btn.addEventListener('pointerdown',pointerStart);btn.addEventListener('pointermove',pointerMove);btn.addEventListener('pointerup',pointerEnd);btn.addEventListener('pointercancel',pointerEnd);
-  btn.onclick=()=>{if(btn.dataset.skipClick)return;panel.classList.toggle('open');};
+  btn.addEventListener('pointerdown',pointerStart);btn.addEventListener('pointermove',pointerMove);btn.addEventListener('pointerup',pointerEnd);btn.addEventListener('pointercancel',pointerEnd);btn.onclick=()=>{if(btn.dataset.skipClick)return;panel.classList.toggle('open');};
   document.getElementById('angoAssistantClose').onclick=()=>panel.classList.remove('open');
   document.getElementById('angoAssistantForm').onsubmit=e=>{e.preventDefault();angoAssistantReply(document.getElementById('angoAssistantInput').value);};
   window.addEventListener('resize',()=>{if(wrap.style.left)clampPosition();});
 }
-function angoAssistantAdd(text,who='bot'){
-  const box=document.getElementById('angoChat');if(!box)return;
-  const d=document.createElement('div');d.className=`ango-msg ${who}`;d.innerHTML=text;box.appendChild(d);box.scrollTop=box.scrollHeight;
-}
+function angoAssistantAdd(text,who='bot'){const box=document.getElementById('angoChat');if(!box)return;const d=document.createElement('div');d.className=`ango-msg ${who}`;d.innerHTML=text;box.appendChild(d);box.scrollTop=box.scrollHeight;}
 function angoAssistantReply(input){
-  const q=String(input||'').trim();if(!q)return;
-  angoAssistantAdd(esc(q),'user');
+  const q=String(input||'').trim();if(!q)return;angoAssistantAdd(esc(q),'user');
   const qn=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
-  // Conversa casual: estas respostas não dependem do inventário estar online.
-  const casual=[
-    {re:/^(ola|oi|olá|bom dia|boa tarde|boa noite|e ai|e aí|hey|hello|hi)(\s+chefe)?[!,. ]*$/i,reply:'Olá! 👋 Seja bem-vindo à Angó Global Cars. Como posso ajudar hoje? Posso procurar um carro para si ou simplesmente conversar um pouco. 😄'},
-    {re:/^(oi|ola|olá)\s+(chefe|mano|bro|irmao|irmão)[!,. ]*$/i,reply:'Fala, chefe! 😎🔥 Estou por aqui. Queres procurar um carro ou só trocar uma ideia?'},
-    {re:/^(como estas|como está|como estas\?|como está\?|tudo bem|tudo bom|como vai)[!?., ]*$/i,reply:'Tudo certo por aqui! 😄 E contigo? Se quiseres, também posso ajudar a encontrar um carro no nosso inventário.'},
-    {re:/^(obrigado|obrigada|valeu|thanks|muito obrigado|muito obrigada)[!?., ]*$/i,reply:'Sempre às ordens! 🤝🚗 Quando precisares, estou aqui.'},
-    {re:/^(quem es|quem és|quem e voce|quem é você|o que fazes|o que você faz)[!?., ]*$/i,reply:'Sou o ANGO ASSISTANT 🤖 da Angó Global Cars. Posso conversar contigo e também consultar os carros disponíveis para encontrar opções que combinem com o que procuras.'},
-    {re:/^(ajuda|help|podes ajudar|pode ajudar)[!?., ]*$/i,reply:'Claro! 👍 Diz-me, por exemplo: “Toyota até 10.000 USD”, “quero um SUV”, “preciso de um carro para 7 pessoas” ou simplesmente “olá”.'},
-    {re:/^(tchau|adeus|ate logo|até logo|falamos depois|bye)[!?., ]*$/i,reply:'Até logo! 👋🚗 Quando voltares, o ANGO ASSISTANT estará por aqui.'}
-  ];
-  const casualMatch=casual.find(x=>x.re.test(qn));
-  if(casualMatch){angoAssistantAdd(casualMatch.reply);document.getElementById('angoAssistantInput').value='';return;}
-
-  if(!driveInventoryOnline){angoAssistantAdd('Neste momento não consigo consultar o inventário online. Tente novamente em instantes ou use a pesquisa normal do site.');document.getElementById('angoAssistantInput').value='';return;}
-  const available=(Array.isArray(cars)?cars:[]).filter(c=>c.published!==false&&c.status==='available');
-  const budget=(qn.match(/(?:até|ate|menos de|under|below)\s*\$?\s*([\d,.]+)/)||[])[1];
-  const max=budget?Number(String(budget).replace(/,/g,'')):Infinity;
-  const brands=['Toyota','Honda','Nissan','Mazda','Suzuki','Mitsubishi','Subaru','Volkswagen','BMW','Mercedes-Benz','Mercedes','Hyundai','Kia','Ford','Isuzu','Hino','Daihatsu'];
-  const brand=brands.find(b=>qn.includes(b.toLowerCase()));
-  const bodyMap=[['suv','SUV'],['pickup','Pick up'],['pick up','Pick up'],['sedan','Sedan'],['van','Van'],['minivan','Minivan'],['truck','Truck'],['hatchback','Hatchback']];
-  const body=bodyMap.find(x=>qn.includes(x[0]))?.[1];
-  let results=available.filter(c=>(!brand||String(c.brand||'').toLowerCase().includes(brand.toLowerCase()))&&(!body||String(c.body||'').toLowerCase()===body.toLowerCase())&&Number(c.price||0)<=max);
-  const modelWords=['hilux','ractis','freed','bongo','hiace','dyna','rav4','harrier','civic','fit','x-trail','serena','forester','jimny','cx-5'];
-  const model=modelWords.find(m=>qn.includes(m));if(model)results=results.filter(c=>String(c.model||'').toLowerCase().includes(model));
-  results=results.slice(0,4);
+  angoAssistantState.language=angoAssistantLang(q);
+  const say=(pt,en=pt)=>angoAssistantAdd(angoAssistantState.language==='en'?en:pt);
+  if(/^(ola|oi|hello|hi|hey|bom dia|boa tarde|boa noite|bom dia assistant|ola assistant)[!?., ]*$/i.test(qn)){say('Olá! 👋 Sou o ANGO Assistant. Posso ajudar a procurar carros por marca, modelo, orçamento, ano, combustível, carroceria, câmbio e número de lugares. Também consigo continuar uma pesquisa que já começámos.','Hello! 👋 I am the ANGO Assistant. I can help you search by brand, model, budget, year, fuel, body type, transmission and seats, and I can continue a search we already started.');return;}
+  if(/\b(limpa memoria|esquece tudo|recomecar|reset memory|clear memory|começar de novo|comecar de novo)\b/i.test(qn)){angoAssistantClearMemory();say('Memória de pesquisa limpa. Podemos começar de novo. 🧠🔄','Search memory cleared. We can start again. 🧠🔄');return;}
+  if(/\b(obrigado|obrigada|thanks|thank you|valeu|tks)\b/i.test(qn)){say('Sempre às ordens! 🤝🚗','You are welcome! 🤝🚗');return;}
+  if(/\b(quem es|quem e voce|o que consegues fazer|what can you do|who are you)\b/i.test(qn)){say('Sou o ANGO Assistant da Angó Global Cars. A minha “consciência” significa memória do contexto desta pesquisa + consulta ao inventário real. Não invento stock, preços ou características.','I am the ANGO Assistant from Angó Global Cars. My “awareness” means conversation context memory plus real inventory lookup. I do not invent stock, prices or vehicle features.');return;}
+  if(/\b(como funciona|como comprar|buy now|comprar|pagamento|payment|entrega|shipping|porto|contacto|contact|whatsapp|ajuda|help)\b/i.test(qn) && !/(toyota|honda|nissan|mazda|suzuki|mitsubishi|bmw|mercedes|ford|hilux|ractis|freed|bongo|hiace|dyna|axio|civic|fit|suv|sedan|diesel|gasolina|automatic|manual)/i.test(qn)){
+    const wa=angoAssistantContactLink();let extra=wa?`<p><a href="${wa}" target="_blank" rel="noopener noreferrer">💬 Falar no WhatsApp</a></p>`:'';
+    say(`Posso ajudar com a pesquisa do veículo e encaminhar-te para a equipa. Para informações de compra, pagamento, entrega ou disponibilidade final, confirma com a Angó Global Cars.${extra}`,`I can help with the vehicle search and connect you with the team. For final purchase, payment, delivery or availability details, please confirm with Angó Global Cars.${extra}`);return;
+  }
+  if(!driveInventoryOnline){angoAssistantAdd('Neste momento o inventário online não está disponível. Posso continuar a conversa, mas não vou inventar carros.');return;}
+  const previous={...angoAssistantState};const next=angoAssistantParse(q);
+  const hasVehicleSignal=!!(next.brand||next.model||next.body||next.fuel||next.minPrice!=null||next.maxPrice!=null||next.minYear!=null||next.maxYear!=null||next.seats!=null||next.trans||next.sort);
+  const followup=/^(e|tambem|também|mas e|e quanto a|what about|and|ok|okay|entao|então)\b/i.test(qn)||/\b(esse|essa|aquele|aquela|estes|estas|esses|essas|mais barato|mais caro|outra opcao|outra opção|outro|outra|mais um|mais uma)\b/i.test(qn);
+  if(followup && previous.lastResults?.length && /\b(esse|essa|aquele|aquela|estes|estas|esses|essas)\b/i.test(qn)){
+    const found=previous.lastResults.find(x=>qn.includes(String(x.model||'').toLowerCase())||qn.includes(String(x.brand||'').toLowerCase()));
+    if(found){angoAssistantAdd(`Estás a referir-te ao <strong>${esc(found.brand)} ${esc(found.model)}</strong>. <a href="${driveCarUrl(found)}">Ver detalhes</a>.`);return;}
+  }
+  // Perguntas sobre os resultados anteriores: mantém o contexto em vez de começar uma pesquisa nova.
+  if(previous.lastResults?.length && /\b(quais|qual|mostra|mostrar|show|opcoes|opções|resultados|eles|elas|esses|essas)\b/i.test(qn) && !hasVehicleSignal){
+    const cards=previous.lastResults.slice(0,5).map(c=>`<div class="ango-car"><b>${esc(c.brand)} ${esc(c.model)}</b><span>${esc(c.year||'')} · ${angoAssistantMoney(c.price)}</span><a href="${driveCarUrl(c)}">Ver detalhes →</a></div>`).join('');
+    angoAssistantAdd(`${angoAssistantState.language==='en'?'These are the results from our previous search:':'Estes são os resultados da nossa pesquisa anterior:'}<div class="ango-results">${cards}</div>`);return;
+  }
+  // Perguntas vagas: não responde apenas "não encontrei"; usa o contexto e pede a informação que falta.
+  if(!hasVehicleSignal && !followup){
+    if(/\b(preco|preço|quanto custa|cost|price)\b/i.test(qn) && previous.lastResults?.length){const c=previous.lastResults[0];say(`O resultado mais recente foi ${c.brand} ${c.model} por ${angoAssistantMoney(c.price)}. Se quiseres, digo-te o mais barato ou comparo os resultados.`,`The latest result was ${c.brand} ${c.model} at ${angoAssistantMoney(c.price)}. I can also show the cheapest or compare the results.`);return;}
+    say('Claro. Diz-me uma preferência — por exemplo: “Toyota”, “SUV até 20.000”, “diesel de 2020 para cima” ou “Honda Freed”. Se já estávamos a pesquisar, podes simplesmente dizer “mais barato”, “e Honda?” ou “mostra os resultados”.','Sure. Give me a preference — for example: “Toyota”, “SUV under 20,000”, “diesel from 2020” or “Honda Freed”. If we were already searching, you can simply say “cheapest”, “what about Honda?” or “show the results”.');return;
+  }
+  angoAssistantState=next;
+  let results=angoAssistantFilter(angoAssistantState);
+  if(followup&&previous.lastResults?.length&&/\bmais barato|mais caro\b/i.test(qn)){results=[...previous.lastResults].sort((a,b)=>Number(a.price||0)-Number(b.price||0));if(/mais caro/i.test(qn))results.reverse();}
+  if(/\b(outra opcao|outra opção|outro|outra|mais um|mais uma)\b/i.test(qn)&&previous.lastResults?.length){const prevIds=new Set(previous.lastResults.map(x=>String(x.id)));const alt=results.filter(x=>!prevIds.has(String(x.id)));if(alt.length)results=alt;}
+  results=results.slice(0,5);angoAssistantState.lastResults=results.map(c=>({id:c.id,brand:c.brand,model:c.model,price:c.price,year:c.year,body:c.body,fuel:c.fuel,trans:c.trans}));angoAssistantSaveMemory();
+  const summary=angoAssistantQuerySummary(angoAssistantState);
   if(results.length){
-    const cards=results.map(c=>`<div class="ango-car"><b>${esc(c.brand)} ${esc(c.model)}</b><span>${esc(c.year||'')} · ${Number(c.price||0).toLocaleString('en-US')} USD</span><a href="${driveCarUrl(c)}">Ver carro →</a></div>`).join('');
-    angoAssistantAdd(`Encontrei <strong>${results.length}</strong> opção(ões) no inventário atual:<div class="ango-results">${cards}</div>`);
+    const cards=results.map(c=>`<div class="ango-car"><b>${esc(c.brand)} ${esc(c.model)}</b><span>${esc(c.year||'')} · ${angoAssistantMoney(c.price)}${c.fuel?` · ${esc(c.fuel)}`:''}${c.trans?` · ${esc(c.trans)}`:''}</span><a href="${driveCarUrl(c)}">Ver detalhes →</a></div>`).join('');
+    const wa=angoAssistantContactLink();
+    angoAssistantAdd(`${angoAssistantState.language==='en'?'I found':'Encontrei'} <strong>${results.length}</strong> ${angoAssistantState.language==='en'?'real available option(s)':'opção(ões) realmente disponíveis'}${summary?` para <strong>${esc(summary)}</strong>`:''}.<div class="ango-results">${cards}</div>${wa?`<p><a href="${wa}" target="_blank" rel="noopener noreferrer">💬 ${angoAssistantState.language==='en'?'Talk on WhatsApp':'Falar no WhatsApp'}</a></p>`:''}`);
   }else{
-    angoAssistantAdd('Não encontrei uma opção que corresponda exatamente aos critérios. Tente indicar <strong>marca, modelo, tipo de carro ou orçamento</strong> e eu procuro novamente.');
+    angoAssistantAdd(angoAssistantState.language==='en'?`I did not find a real available vehicle matching <strong>${esc(summary||q)}</strong>. I still remember the other preferences. Try changing only one thing, for example “higher budget”, “Honda instead” or “2021+”.`:`Não encontrei um carro realmente disponível para <strong>${esc(summary||q)}</strong>. Eu continuo a lembrar as outras preferências. Tenta mudar apenas uma coisa, por exemplo “aumenta o orçamento”, “Honda em vez de Toyota” ou “2021 para cima”.`);
   }
   document.getElementById('angoAssistantInput').value='';
 }
@@ -934,7 +1070,29 @@ document.addEventListener("DOMContentLoaded",async()=>{
   // O botão Login não pode ficar dependente de uma consulta de carros/RLS/rede.
   clientAuthCheckPromise=initClientModal();
 
-  await loadPublicCars();
+  // A tela de loading/processamento acontece SOMENTE na primeira abertura do site nesta sessão.
+  // Ao voltar de outra página para a Home, não fazemos novo processamento.
+  // O catálogo já carregado permanece disponível e o Realtime trata alterações futuras.
+  const catalogWasLoadedThisSession=sessionStorage.getItem(INITIAL_CATALOG_SESSION_KEY)==="1";
+
+  if(!catalogWasLoadedThisSession){
+    try{
+      await Promise.race([
+        loadPublicCars(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tempo limite ao carregar o catálogo.")),10000))
+      ]);
+      sessionStorage.setItem(INITIAL_CATALOG_SESSION_KEY,"1");
+    }catch(e){
+      console.error("Carregamento inicial:",e);
+      finishInitialLoading(e);
+      return;
+    }
+  }else{
+    // O catálogo desta sessão já foi carregado na primeira abertura.
+    // Ao voltar para a Home NÃO fazemos uma nova consulta nem mostramos loading.
+    // O Realtime continua responsável por refletir alterações publicadas.
+  }
+
   subscribePublicCars();
   const quick=document.getElementById("quickSearch");
   if(quick){
@@ -946,6 +1104,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   renderBrands();renderBodies();renderPopular();renderRecent();syncPopularTagState();renderResults(cars);updateFavCount();
   await clientAuthCheckPromise;
   await loadGeneralSiteContact();
+  finishInitialLoading();
   const params=new URLSearchParams(location.search);
   if(params.get("openLogin")==="1") openClientModal();
   if(params.get("openSignup")==="1"){openClientModal();showClientSignup();}
