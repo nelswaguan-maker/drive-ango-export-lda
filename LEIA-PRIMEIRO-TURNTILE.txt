@@ -1,0 +1,17 @@
+DRIVE ANGO — ZIP DE DIAGNÓSTICO DO TURNSTILE
+
+O QUE FOI ALTERADO
+- Mantido o projeto completo da versão anterior.
+- Em script.js, o error-callback do Cloudflare Turnstile agora regista o código na consola e mostra um alerta com o código recebido.
+- Nenhuma Secret Key foi adicionada ou alterada.
+
+COMO TESTAR
+1. Extrai este ZIP.
+2. Publica todo o conteúdo na Vercel, substituindo a versão anterior.
+3. Abre https://drive-ango-export-lda.vercel.app e entra no formulário de login.
+4. Se surgir um alerta "Erro Turnstile: ...", tira uma captura e envia o código.
+5. Se continuar apenas a mensagem genérica, diz isso; o callback pode não estar a ser chamado.
+
+IMPORTANTE
+- Este ZIP ajuda a recolher diagnóstico; não garante por si só que a falha da Cloudflare fique resolvida.
+- Não partilhes a Secret Key do Turnstile.

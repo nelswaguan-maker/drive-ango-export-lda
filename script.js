@@ -698,18 +698,30 @@ const angoTurnstileTokens = {};
 
 function renderAngoTurnstile(id){
   const el=document.getElementById(id);
-  if(!el || !window.turnstile || el.dataset.rendered==="1") return;
+  if(!el || !window.turnstile || el.dataset.rendered==="1") return false;
+  // Não renderizar Turnstile enquanto a respetiva tela do modal estiver escondida.
+  // O widget só deve ser criado quando Login/Cadastro/Recuperação estiver visível.
+  if(el.offsetParent===null) return false;
   try{
     const widget=window.turnstile.render(el,{
       sitekey:ANGO_TURNSTILE_SITE_KEY,
       theme:"auto",
-      callback:(token)=>{angoTurnstileTokens[id]=token;},
+      callback:(token)=>{angoTurnstileTokens[id]=token||"";},
       "expired-callback":()=>{angoTurnstileTokens[id]="";},
-      "error-callback":()=>{angoTurnstileTokens[id]="";}
+      "timeout-callback":()=>{angoTurnstileTokens[id]="";},
+      "error-callback":(code)=>{
+        console.error("ERRO TURNSTILE:", id, code);
+        angoTurnstileTokens[id]="";
+        alert("Erro Turnstile: " + (code || "sem código") + ". Envia este código para diagnóstico.");
+      }
     });
     angoTurnstileWidgets[id]=widget;
     el.dataset.rendered="1";
-  }catch(err){ console.warn("Turnstile ainda não disponível:",err); }
+    return true;
+  }catch(err){
+    console.warn("Turnstile ainda não disponível:",err);
+    return false;
+  }
 }
 function resetAngoTurnstile(id){
   angoTurnstileTokens[id]="";
@@ -721,15 +733,21 @@ function getAngoTurnstileToken(id){
   return angoTurnstileTokens[id]||"";
 }
 async function requireAngoTurnstile(id){
-  renderAngoTurnstile(id);
   const started=Date.now();
-  while(Date.now()-started<15000){
+  const maxWait=15000;
+  while(Date.now()-started<maxWait){
+    const el=document.getElementById(id);
+    if(!el) return "";
+    if(!window.turnstile){
+      await new Promise(r=>setTimeout(r,250));
+      continue;
+    }
+    if(el.dataset.rendered!=="1") renderAngoTurnstile(id);
     const token=angoTurnstileTokens[id]||"";
-    if(token)return token;
+    if(token) return token;
     await new Promise(r=>setTimeout(r,250));
-    if(!document.getElementById(id))break;
   }
-  alert("A verificação de segurança ainda não ficou pronta. Confirma o Turnstile e tenta novamente.");
+  alert("A verificação de segurança não foi concluída. Verifica se o Turnstile está autorizado para este domínio e tenta novamente.");
   return "";
 }
 function initAngoTurnstile(){
@@ -750,6 +768,65 @@ function isStrongPassword(password){
 
 function passwordRequirementsMessage(){
   return "A senha deve ter pelo menos 12 caracteres, incluindo letra maiúscula, letra minúscula, número e símbolo.";
+}
+
+/* ===== VALIDAÇÃO VISUAL DO CADASTRO =====
+   Pequenas mensagens junto aos campos, sem alterar a validação/Supabase existente.
+   Vermelho = ainda inválido; verde = válido; vazio = sem mensagem. */
+function initSignupLiveValidation(){
+  const form=document.getElementById("clientSignupForm");
+  if(!form || form.dataset.liveValidationReady==="1") return;
+  form.dataset.liveValidationReady="1";
+
+  const fields={
+    clientName:{test:v=>v.trim().length>=2,ok:"✓ Nome válido",bad:"Introduza pelo menos 2 caracteres."},
+    clientPhone:{test:v=>v.trim().length>=7,ok:"✓ Número válido",bad:"Introduza um número de telefone válido."},
+    clientEmail:{test:v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()),ok:"✓ Email válido",bad:"Introduza um email válido."},
+    clientPass:{test:v=>isStrongPassword(v),ok:"✓ Senha válida",bad:passwordRequirementsMessage()},
+    clientPassConfirm:{test:v=>v!=="" && v===document.getElementById("clientPass")?.value,ok:"✓ As senhas coincidem",bad:"As senhas não coincidem."}
+  };
+
+  const styleId="ango-signup-live-validation-style";
+  if(!document.getElementById(styleId)){
+    const style=document.createElement("style");
+    style.id=styleId;
+    style.textContent=`
+      .ango-field-validation{font-size:12px;line-height:1.35;margin:-5px 0 7px 2px;min-height:16px;font-weight:600;transition:color .15s ease;}
+      .ango-field-validation.invalid{color:#d93025;}
+      .ango-field-validation.valid{color:#16803c;}
+      .ango-signup-field-invalid{border-color:#d93025!important;}
+      .ango-signup-field-valid{border-color:#16803c!important;}
+    `;
+    document.head.appendChild(style);
+  }
+
+  Object.entries(fields).forEach(([id,cfg])=>{
+    const input=document.getElementById(id);
+    if(!input || input.dataset.liveValidationAttached==="1") return;
+    input.dataset.liveValidationAttached="1";
+    const msg=document.createElement("div");
+    msg.className="ango-field-validation";
+    msg.setAttribute("aria-live","polite");
+    msg.setAttribute("aria-atomic","true");
+    input.insertAdjacentElement("afterend",msg);
+
+    const update=()=>{
+      const value=input.value||"";
+      input.classList.remove("ango-signup-field-invalid","ango-signup-field-valid");
+      msg.className="ango-field-validation";
+      if(!value.trim()){msg.textContent="";return;}
+      const valid=cfg.test(value);
+      msg.textContent=valid?cfg.ok:cfg.bad;
+      msg.classList.add(valid?"valid":"invalid");
+      input.classList.add(valid?"ango-signup-field-valid":"ango-signup-field-invalid");
+    };
+    input.addEventListener("input",update);
+    input.addEventListener("blur",update);
+  });
+
+  document.getElementById("clientPass")?.addEventListener("input",()=>{
+    document.getElementById("clientPassConfirm")?.dispatchEvent(new Event("input"));
+  });
 }
 
 async function clientSignup(e){
@@ -887,7 +964,7 @@ async function initClientModal(){
     login.onsubmit=clientLogin;
 
   }
-  if(signup)signup.onsubmit=clientSignup;if(forgot)forgot.onsubmit=sendPasswordReset;if(reset)reset.onsubmit=updateRecoveredPassword;
+  if(signup){signup.onsubmit=clientSignup;initSignupLiveValidation();}if(forgot)forgot.onsubmit=sendPasswordReset;if(reset)reset.onsubmit=updateRecoveredPassword;
   const googleConsent=document.getElementById("googleLegalConsent");
   const googleBtn=document.getElementById("googleLoginBtn");
   if(googleConsent&&googleBtn)googleConsent.addEventListener("change",()=>googleBtn.disabled=!googleConsent.checked);
