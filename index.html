@@ -33,7 +33,7 @@
   <nav class="top-actions">
     <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;" aria-label="Abrir login"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Login</span></a>
     <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span><b id="favCount">0</b></a>
-    <a href="vender.html"><i class="fa-solid fa-car-side"></i><span>Vender carro</span></a>
+    <a class="header-sell-link" href="vender.html"><i class="fa-solid fa-car-side"></i><span>Vender carro</span></a>
     <button class="notification-btn" type="button" onclick="openNotifications()" aria-label="Notificações"><i class="fa-regular fa-bell"></i><span>Notificações</span><b id="notificationCount" style="display:none">0</b></button>
     <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
   </nav>
@@ -42,6 +42,7 @@
 <div id="mobileMenu" class="mobile-menu">
   <a href="#marcas">Marcas</a><a href="#precos">Preços</a><a href="#carrocerias">Carrocerias</a>
   <a href="#modelos">Modelos mais vistos</a><a href="favoritos.html">Favoritos</a><a href="vender.html">Vender o meu carro</a>
+  <button class="menu-setting-btn menu-notifications-btn" type="button" onclick="openNotifications();toggleMenu()"><i class="fa-regular fa-bell"></i> Notificações <b id="menuNotificationCount" style="display:none">0</b></button>
   <button class="menu-setting-btn" type="button" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Definições</button>
   <a href="admin.html" data-admin-only class="admin-only" style="display:none">Administração</a>
 </div>

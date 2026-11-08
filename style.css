@@ -276,3 +276,19 @@ body{zoom:.8}
 .cambio-row-international input{width:100%;}
 @media(max-width:480px){.cambio-row-international{flex-wrap:wrap}.cambio-row-international .cambio-select{flex:1;max-width:none}.cambio-row-international input{flex-basis:100%;order:3}.cambio-row-international #cambioTroca{order:2}}
 .dark-mode .cambio-row-international .cambio-select{background:#0f1115;border-color:#343842;color:#f4f4f4}
+/* Correções de navegação e pesquisa em ecrãs móveis */
+@media(max-width:700px){
+  .header{height:auto;min-height:100px;padding:10px 12px;gap:8px;overflow:visible}
+  .top-actions{flex:1;min-width:0;justify-content:flex-end;gap:clamp(7px,2vw,13px)}
+  .header-sell-link,.notification-btn{display:none!important}
+  .top-actions a,.menu-btn{min-width:0}
+  .top-actions span{max-width:58px;text-overflow:ellipsis}
+  .mobile-menu{top:calc(100px + 5px);right:8px;width:min(280px,calc(100vw - 16px));max-height:calc(100dvh - 120px);overflow:auto}
+  .menu-notifications-btn{display:block}
+  .hero-overlay{min-width:0}
+  .hero-search{width:100%;max-width:100%;min-width:0;display:flex;align-items:stretch}
+  .search-input-wrap{min-width:0;flex:1}
+  .hero-search .search-input-wrap input{min-width:0;width:100%;height:58px;padding:12px 14px;font-size:15px;box-sizing:border-box}
+  .hero-search button{flex:0 0 58px;width:58px;min-width:58px;height:58px;padding:0}
+  .search-suggestions{max-width:100%;box-sizing:border-box}
+}
