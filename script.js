@@ -482,7 +482,19 @@ function applySavedTheme(){
   document.body.classList.toggle("dark-mode",theme==="dark" || (theme==="system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
 }
 function setTheme(theme){localStorage.setItem(THEME_KEY,theme);applySavedTheme();openSettingsSection("theme");}
-function setLanguage(lang){localStorage.setItem(LANG_KEY,lang);document.documentElement.lang=lang;openSettingsSection("language");}
+const DRIVE_TRANSLATIONS={
+  "Calculadora de Câmbio":"Currency Converter","Valor a converter":"Amount to convert","Taxa de referência. O valor final é confirmado na cotação.":"Reference rate. The final amount is confirmed at the time of quotation.","A obter câmbio…":"Loading exchange rate…","Procurar Por Desconto":"Search by Discount","Notificações":"Notifications","Definições":"Settings","Idioma":"Language","Perfil":"Profile","Gerir a tua conta":"Manage your account","Tema":"Theme","Claro / Noturno / Sistema":"Light / Dark / System","Ver alertas e novidades":"View alerts and news","Avisos importantes":"Important notices","Informação sobre a SBT Japan e os pedidos":"Information about SBT Japan and requests","Sobre nós":"About us","Privacidade":"Privacy","Política de Privacidade":"Privacy Policy","Termos e condições":"Terms and conditions","Regras de utilização":"Terms of use","Marcar todas como lidas":"Mark all as read","A preferência fica guardada neste dispositivo.":"Your preference is saved on this device.","Abaixo de $1,000":"Under $1,000","Acima de $5,001":"Above $5,001","Nenhum modelo encontrado para esta marca.":"No models found for this brand."
+};
+function applyDriveTranslations(){
+ const en=(localStorage.getItem(LANG_KEY)||"pt")==="en";
+ document.documentElement.lang=en?"en":"pt";
+ document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.getAttribute("data-i18n");if(!el.dataset.ptOriginal)el.dataset.ptOriginal=el.textContent;el.textContent=en?(DRIVE_TRANSLATIONS[key]||el.dataset.ptOriginal):el.dataset.ptOriginal;});
+ if(!document.getElementById("cambioCalc"))return;
+ const label=document.querySelector(".cambio-label"),warning=document.querySelector(".cambio-aviso");
+ if(label)label.textContent=en?"Amount to convert":"Valor a converter";
+ if(warning)warning.textContent=en?"Reference rate. The final amount is confirmed at the time of quotation.":"Taxa de referência. O valor final é confirmado na cotação.";
+}
+function setLanguage(lang){localStorage.setItem(LANG_KEY,lang);applyDriveTranslations();window.dispatchEvent(new CustomEvent("driveLanguageChanged"));openSettingsSection("language");}
 function openSettings(){
   const m=document.getElementById("settingsModal");if(!m)return;
   m.style.display="block";openSettingsSection("main");
@@ -1019,8 +1031,8 @@ let angoAssistantState={language:"pt",brand:"",model:"",body:"",fuel:"",minPrice
 function angoAssistantLoadMemory(){try{const x=JSON.parse(localStorage.getItem(ANGO_ASSISTANT_MEMORY_KEY)||"null");if(x&&typeof x==='object')angoAssistantState={...angoAssistantState,...x};}catch(_){}}
 function angoAssistantSaveMemory(){try{localStorage.setItem(ANGO_ASSISTANT_MEMORY_KEY,JSON.stringify({...angoAssistantState,lastResults:(angoAssistantState.lastResults||[]).slice(0,8)}));}catch(_){}}
 function angoAssistantClearMemory(){angoAssistantState={language:"pt",brand:"",model:"",body:"",fuel:"",minPrice:null,maxPrice:null,minYear:null,maxYear:null,seats:null,lastResults:[],lastQuery:""};angoAssistantSaveMemory();}
-function angoAssistantMoney(n){return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0})+' USD';}
-function angoAssistantLang(q){return /\b(hello|hi|hey|please|looking for|i need|cheap|under|above|year|price|fuel|automatic|manual)\b/i.test(q)?'en':'pt';}
+function angoAssistantMoney(n){try{if(window.driveCurrency&&typeof window.driveFormatMoney==='function'&&(driveCurrency.get()==='USD'||driveCurrency.getRate()>0))return driveFormatMoney(n);}catch(_){}return Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0})+' USD';}
+function angoAssistantLang(q){if(/\b(hello|hi|hey|please|looking for|i need|cheap|under|above|year|price|fuel|automatic|manual|what|how|can you|do you|where|which)\b/i.test(q))return 'en';try{return localStorage.getItem('driveLanguage')==='en'?'en':'pt';}catch(_){return 'pt';}}
 function angoAssistantContactLink(){
   const n=String(generalSiteContact?.whatsapp||generalSiteContact?.phone||'').replace(/\D/g,'');
   if(!n)return '';
@@ -1031,17 +1043,19 @@ function angoAssistantParse(q){
   const n=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   const next={...angoAssistantState,lastQuery:q};
   if(/\b(limpa|esquece|reset|recomecar|comecar de novo|clear|reset memory)\b/.test(n)){angoAssistantClearMemory();return angoAssistantState;}
-  const brands=['Toyota','Honda','Nissan','Mazda','Suzuki','Mitsubishi','Subaru','Volkswagen','BMW','Mercedes-Benz','Mercedes','Hyundai','Kia','Ford','Isuzu','Hino','Daihatsu','Lexus','Audi','Volvo','Jeep','Peugeot','Jaguar','Citroen','Land Rover'];
+  const brands=['Toyota','Honda','Nissan','Mazda','Suzuki','Mitsubishi','Subaru','Volkswagen','BMW','Mercedes-Benz','Mercedes','Hyundai','Kia','Ford','Isuzu','Hino','Daihatsu','Lexus','Audi','Volvo','Jeep','Peugeot','Jaguar','Citroen','Land Rover'].concat(angoAssistantInventoryTerms().brands);
   const brand=brands.find(b=>n.includes(b.toLowerCase())); if(brand)next.brand=brand;
-  const models=['hilux','ractis','freed','bongo','hiace','dyna','axio','fielder','corolla','rav4','harrier','civic','fit','cr-v','hr-v','vezel','x-trail','serena','forester','jimny','cx-5','cx-3','canter','fuso','prado','land cruiser','noah','voxy','sienta','wish','aqua','prius','yaris','vitz','alphard','vellfire','crown','mark x','note','navara','caravan','march','demio','atenza','axela','premacy','familia','swift','every','wagon r','alto','solio','pajero','outlander','delica','lancer','impreza','legacy','levorg','d-max','elf','giga','golf','polo','passat','tiguan','transporter','sprinter','vito','tucson','santa fe','sportage','sorento','picanto','carnival'];
+  const models=['hilux','ractis','freed','bongo','hiace','dyna','axio','fielder','corolla','rav4','harrier','civic','fit','cr-v','hr-v','vezel','x-trail','serena','forester','jimny','cx-5','cx-3','canter','fuso','prado','land cruiser','noah','voxy','sienta','wish','aqua','prius','yaris','vitz','alphard','vellfire','crown','mark x','note','navara','caravan','march','demio','atenza','axela','premacy','familia','swift','every','wagon r','alto','solio','pajero','outlander','delica','lancer','impreza','legacy','levorg','d-max','elf','giga','golf','polo','passat','tiguan','transporter','sprinter','vito','tucson','santa fe','sportage','sorento','picanto','carnival'].concat(angoAssistantInventoryTerms().models);
   const model=models.find(m=>n.includes(m)); if(model)next.model=model;
+  if(brand&&!model&&angoAssistantState.brand&&angoAssistantState.brand!==brand)next.model='';
+  if(model&&!brand&&next.brand&&!(Array.isArray(cars)?cars:[]).some(c=>String(c.brand||'').toLowerCase().includes(String(next.brand).toLowerCase())&&String(c.model||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(model)))next.brand='';
   const bodies=[['suv','SUV'],['pick-up','Pick up'],['pickup','Pick up'],['pick up','Pick up'],['sedan','Sedan'],['coupe','Coupe'],['hatchback','Hatchback'],['station wagon','Station Wagon'],['wagon','Station Wagon'],['minivan','Minivan'],['bus','Bus/Minibus'],['minibus','Bus/Minibus'],['truck','Truck'],['van','Van']];
   const body=bodies.find(([k])=>n.includes(k)); if(body)next.body=body[1];
   const fuels=[['gasolina','Gasolina'],['petrol','Gasolina'],['diesel','Diesel'],['hibrido','Híbrido'],['hybrid','Híbrido'],['eletrico','Elétrico'],['electric','Elétrico']];
   const fuel=fuels.find(([k])=>n.includes(k)); if(fuel)next.fuel=fuel[1];
-  const max=n.match(/(?:ate|até|menos de|under|below|no maximo|no maximo de|budget(?:o)? de)\s*(?:usd|us\$|\$)?\s*([\d\s.,]+)\s*(?:usd|dolar|dollars?)?/i);
+  const max=n.match(/(?:ate|até|menos de|under|below|no maximo|no maximo de|budget(?:o)? de)\s*(?:usd|us\$|\$)?\s*(\d[\d\s.,]*)\s*(?:usd|dolar|dollars?)?/i);
   if(max)next.maxPrice=Number(max[1].replace(/[^0-9]/g,''));
-  const min=n.match(/(?:a partir de|acima de|mais de|from|above|over|minimo de)\s*(?:usd|us\$|\$)?\s*([\d\s.,]+)/i);
+  const min=n.match(/(?:a partir de|acima de|mais de|from|above|over|minimo de)\s*(?:usd|us\$|\$)?\s*(\d[\d\s.,]*)/i);
   if(min)next.minPrice=Number(min[1].replace(/[^0-9]/g,''));
   const years=[...n.matchAll(/\b(19\d{2}|20\d{2})\b/g)].map(m=>Number(m[1]));
   if(years.length===1)next.minYear=years[0];
@@ -1091,15 +1105,75 @@ function initAngoAssistant(){
   document.getElementById('angoAssistantForm').onsubmit=e=>{e.preventDefault();angoAssistantReply(document.getElementById('angoAssistantInput').value);};
   window.addEventListener('resize',()=>{if(wrap.style.left)clampPosition();});
 }
-function angoAssistantAdd(text,who='bot'){const box=document.getElementById('angoChat');if(!box)return;const d=document.createElement('div');d.className=`ango-msg ${who}`;d.innerHTML=text;box.appendChild(d);box.scrollTop=box.scrollHeight;}
-function angoAssistantReply(input){
-  const q=String(input||'').trim();if(!q)return;angoAssistantAdd(esc(q),'user');
+/* --- conversa natural com IA (servidor: /api/assistant). Se falhar, usa a pesquisa antiga abaixo. --- */
+let angoAssistantHistory=[];
+let angoAssistantAIOffUntil=0;
+function angoAssistantInventoryTerms(){
+  const norm=x=>String(x||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();
+  const brands=new Set(),models=new Set();
+  (Array.isArray(cars)?cars:[]).forEach(c=>{
+    if(c.published===false)return;
+    const b=String(c.brand||'').trim();if(b)brands.add(b);
+    const m=norm(c.model);if(m.length>=3){models.add(m);const first=m.split(/[\s-]+/)[0];if(first.length>=4)models.add(first);}
+  });
+  return {brands:[...brands],models:[...models]};
+}
+function angoAssistantMessageHasVehicleSignal(q){
+  if(/\b(limpa|esquece|reset|recomecar|comecar de novo|clear)\b/i.test(String(q).normalize('NFD').replace(/[̀-ͯ]/g,'')))return false;
+  const saved=angoAssistantState;
+  try{
+    angoAssistantState={...saved,brand:'',model:'',body:'',fuel:'',minPrice:null,maxPrice:null,minYear:null,maxYear:null,seats:null,trans:undefined,sort:undefined,onlyAvailable:undefined};
+    const n=angoAssistantParse(q);
+    return !!(n.brand||n.model||n.body||n.fuel||n.minPrice!=null||n.maxPrice!=null||n.minYear!=null||n.maxYear!=null||n.seats!=null||n.trans||n.sort);
+  }finally{angoAssistantState=saved;}
+}
+function angoAssistantTyping(on){
+  const box=document.getElementById('angoChat');if(!box)return;
+  let el=document.getElementById('angoTyping');
+  if(on){if(el)return;el=document.createElement('div');el.id='angoTyping';el.className='ango-msg bot';el.textContent=angoAssistantState.language==='en'?'Typing…':'A escrever…';box.appendChild(el);box.scrollTop=box.scrollHeight;}
+  else if(el)el.remove();
+}
+async function angoAssistantAskAI(){
+  if(Date.now()<angoAssistantAIOffUntil)return null;
+  const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),25000);
+  try{
+    const r=await fetch('/api/assistant',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:angoAssistantHistory.slice(-12),lang:angoAssistantState.language}),signal:ctrl.signal});
+    if(!r.ok){angoAssistantAIOffUntil=Date.now()+((r.status===503||r.status===404)?30*60*1000:60*1000);return null;}
+    const d=await r.json();
+    return (d&&typeof d.reply==='string'&&d.reply.trim())?d.reply:null;
+  }catch(_){angoAssistantAIOffUntil=Date.now()+60*1000;return null;}
+  finally{clearTimeout(t);}
+}
+function angoAssistantRenderAI(text){
+  const en=angoAssistantState.language==='en';
+  let html=esc(text).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  html=html.replace(/\[\[car:([^\]]{1,80})\]\]/g,(m,id)=>{
+    const c=(Array.isArray(cars)?cars:[]).find(x=>String(x.id)===String(id).trim()&&x.published!==false);
+    if(!c)return '';
+    return `<div class="ango-results"><div class="ango-car"><b>${esc(c.brand)} ${esc(c.model)}</b><span>${esc(c.year||'')} · ${angoAssistantMoney(c.price)}</span><a href="${driveCarUrl(c)}">${en?'View details':'Ver detalhes'} →</a></div></div>`;
+  });
+  html=html.replace(/\[\[whatsapp\]\]/g,()=>{const wa=angoAssistantContactLink();return wa?`<p><a href="${wa}" target="_blank" rel="noopener noreferrer">💬 ${en?'Talk on WhatsApp':'Falar no WhatsApp'}</a></p>`:'';});
+  return html;
+}
+function angoAssistantAdd(text,who='bot'){const box=document.getElementById('angoChat');if(!box)return;const d=document.createElement('div');d.className=`ango-msg ${who}`;d.innerHTML=text;box.appendChild(d);box.scrollTop=box.scrollHeight;try{angoAssistantHistory.push({role:who==='user'?'user':'assistant',content:String(d.textContent||'').slice(0,700)});if(angoAssistantHistory.length>14)angoAssistantHistory=angoAssistantHistory.slice(-14);}catch(_){}}
+async function angoAssistantReply(input){
+  const q=String(input||'').trim();if(!q)return;angoAssistantAdd(esc(q),'user');{const inp=document.getElementById('angoAssistantInput');if(inp)inp.value='';}
   const qn=q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
   angoAssistantState.language=angoAssistantLang(q);
   const say=(pt,en=pt)=>angoAssistantAdd(angoAssistantState.language==='en'?en:pt);
   if(/^(ola|oi|hello|hi|hey|bom dia|boa tarde|boa noite|bom dia assistant|ola assistant)[!?., ]*$/i.test(qn)){say('Olá! 👋 Sou o ANGO Assistant. Posso ajudar a procurar carros por marca, modelo, orçamento, ano, combustível, carroceria, câmbio e número de lugares. Também consigo continuar uma pesquisa que já começámos.','Hello! 👋 I am the ANGO Assistant. I can help you search by brand, model, budget, year, fuel, body type, transmission and seats, and I can continue a search we already started.');return;}
   if(/\b(limpa memoria|esquece tudo|recomecar|reset memory|clear memory|começar de novo|comecar de novo)\b/i.test(qn)){angoAssistantClearMemory();say('Memória de pesquisa limpa. Podemos começar de novo. 🧠🔄','Search memory cleared. We can start again. 🧠🔄');return;}
   if(/\b(obrigado|obrigada|thanks|thank you|valeu|tks)\b/i.test(qn)){say('Sempre às ordens! 🤝🚗','You are welcome! 🤝🚗');return;}
+  {
+    // Pesquisa curta e direta ("Toyota Hilux até 20000") continua na pesquisa exata do stock. O resto é conversa natural com IA.
+    const pureSearch=angoAssistantMessageHasVehicleSignal(q)&&q.split(/\s+/).filter(Boolean).length<=6&&!/\?/.test(q);
+    if(!pureSearch){
+      angoAssistantTyping(true);
+      const ai=await angoAssistantAskAI();
+      angoAssistantTyping(false);
+      if(ai){angoAssistantAdd(angoAssistantRenderAI(ai),'bot');return;}
+    }
+  }
   if(/\b(quem es|quem e voce|o que consegues fazer|what can you do|who are you)\b/i.test(qn)){say('Sou o ANGO Assistant da Angó Global Cars. A minha “consciência” significa memória do contexto desta pesquisa + consulta ao inventário real. Não invento stock, preços ou características.','I am the ANGO Assistant from Angó Global Cars. My “awareness” means conversation context memory plus real inventory lookup. I do not invent stock, prices or vehicle features.');return;}
   if(/\b(como funciona|como comprar|buy now|comprar|pagamento|payment|entrega|shipping|porto|contacto|contact|whatsapp|ajuda|help)\b/i.test(qn) && !/(toyota|honda|nissan|mazda|suzuki|mitsubishi|bmw|mercedes|ford|hilux|ractis|freed|bongo|hiace|dyna|axio|civic|fit|suv|sedan|diesel|gasolina|automatic|manual)/i.test(qn)){
     const wa=angoAssistantContactLink();let extra=wa?`<p><a href="${wa}" target="_blank" rel="noopener noreferrer">💬 Falar no WhatsApp</a></p>`:'';
@@ -1141,7 +1215,7 @@ function angoAssistantReply(input){
 
 document.addEventListener("DOMContentLoaded",async()=>{
   initAngoAssistant();
-  applySavedTheme();updateNotificationCount();
+  applySavedTheme();updateNotificationCount();applyDriveTranslations();
 
   // Inicializa a autenticação ANTES do carregamento do catálogo.
   // O botão Login não pode ficar dependente de uma consulta de carros/RLS/rede.

@@ -4,7 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="google-site-verification" content="ef0guAb7B4zT041IA3zyQw9260Szh5Q1IduLtYkTArc" />
-  <title>DRIVE — Carros do Japão</title>
+  <title>DRIVE Cars Moçambique | Carros do Japão</title>
+  <meta name="description" content="Descubra veículos no DRIVE Cars. Explore carros do Japão, consulte informações dos veículos e fale connosco para pedidos de compra e exportação para Moçambique.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://drive-ango-export-lda.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_MZ">
+  <meta property="og:site_name" content="DRIVE Cars">
+  <meta property="og:title" content="DRIVE Cars Moçambique | Carros do Japão">
+  <meta property="og:description" content="Explore veículos e consulte opções de compra e exportação para Moçambique.">
+  <meta property="og:url" content="https://drive-ango-export-lda.vercel.app/">
+  <meta name="twitter:card" content="summary">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
@@ -23,6 +33,7 @@
   <nav class="top-actions">
     <a href="#" id="clientHeaderLink" onclick="handleClientHeaderClick(event);return false;" aria-label="Abrir login"><i class="fa-regular fa-circle-user"></i><span id="clientLabel">Login</span></a>
     <a href="favoritos.html"><i class="fa-regular fa-heart"></i><span>Favoritos</span><b id="favCount">0</b></a>
+    <a href="vender.html"><i class="fa-solid fa-car-side"></i><span>Vender carro</span></a>
     <button class="notification-btn" type="button" onclick="openNotifications()" aria-label="Notificações"><i class="fa-regular fa-bell"></i><span>Notificações</span><b id="notificationCount" style="display:none">0</b></button>
     <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
   </nav>
@@ -30,7 +41,7 @@
 
 <div id="mobileMenu" class="mobile-menu">
   <a href="#marcas">Marcas</a><a href="#precos">Preços</a><a href="#carrocerias">Carrocerias</a>
-  <a href="#modelos">Modelos mais vistos</a><a href="favoritos.html">Favoritos</a>
+  <a href="#modelos">Modelos mais vistos</a><a href="favoritos.html">Favoritos</a><a href="vender.html">Vender o meu carro</a>
   <button class="menu-setting-btn" type="button" onclick="openSettings()"><i class="fa-solid fa-gear"></i> Definições</button>
   <a href="admin.html" data-admin-only class="admin-only" style="display:none">Administração</a>
 </div>
@@ -138,6 +149,22 @@
     <button onclick="setPrice(3001,4000)">$3,001 - $4,000<br><small id="pc3">(0)</small></button>
     <button onclick="setPrice(4001,5000)">$4,001 - $5,000<br><small id="pc4">(0)</small></button>
     <button onclick="setPrice(5001,9999999)">Acima de $5,001<br><small id="pc5">(0)</small></button>
+  </div>
+</section>
+
+<section id="cambio" class="content-section">
+  <h2 class="red-title">Calculadora de Câmbio</h2>
+  <div class="cambio-card" id="cambioCalc">
+    <label class="cambio-label" for="cambioValor" data-i18n="cambioLabel">Valor a converter</label>
+    <div class="cambio-row cambio-row-international">
+      <select id="cambioDe" class="cambio-select" aria-label="Moeda de origem"></select>
+      <input id="cambioValor" type="number" inputmode="decimal" min="0" step="any" value="1" aria-label="Valor">
+      <button id="cambioTroca" class="cambio-troca" type="button" aria-label="Trocar moedas">⇄</button>
+      <select id="cambioPara" class="cambio-select" aria-label="Moeda de destino"></select>
+    </div>
+    <div class="cambio-resultado" id="cambioResultado" aria-live="polite">—</div>
+    <p class="cambio-info" id="cambioInfo">A obter câmbio…</p>
+    <p class="cambio-aviso" data-i18n="cambioAviso">Taxa de referência. O valor final é confirmado na cotação.</p>
   </div>
 </section>
 
@@ -294,6 +321,7 @@
 <script src="supabase-config.js"></script>
 <script src="cars-data.js"></script>
 <script src="currency.js"></script>
+<script src="cambio.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

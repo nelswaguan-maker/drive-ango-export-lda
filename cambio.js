@@ -1,0 +1,29 @@
+/* DRIVE — conversor internacional de moedas. Mantém currency.js separado para os preços dos carros USD/MT. */
+(function () {
+  const CURRENCIES = [
+    ['MZN','Metical moçambicano'],['USD','Dólar americano'],['ZAR','Rand sul-africano'],['TZS','Xelim tanzaniano'],['MWK','Kwacha malawiano'],['EUR','Euro'],['GBP','Libra esterlina'],['JPY','Iene japonês'],['CNY','Yuan chinês'],['INR','Rupia indiana'],['KES','Xelim queniano'],['UGX','Xelim ugandês'],['BWP','Pula botsuanês'],['ZMW','Kwacha zambiano'],['AOA','Kwanza angolano'],['NAD','Dólar namibiano'],['LSL','Loti lesotiano'],['SZL','Lilangeni'],['NGN','Naira nigeriana'],['GHS','Cedi ganês'],['RWF','Franco ruandês'],['ETB','Birr etíope'],['AED','Dirham dos Emirados'],['SAR','Rial saudita'],['QAR','Rial catariano'],['TRY','Lira turca'],['CHF','Franco suíço'],['CAD','Dólar canadiano'],['AUD','Dólar australiano'],['NZD','Dólar neozelandês'],['BRL','Real brasileiro'],['MXN','Peso mexicano'],['ARS','Peso argentino'],['CLP','Peso chileno'],['COP','Peso colombiano'],['EGP','Libra egípcia'],['MAD','Dirham marroquino'],['XOF','Franco CFA BCEAO'],['XAF','Franco CFA BEAC'],['IDR','Rupia indonésia'],['KRW','Won sul-coreano'],['SGD','Dólar de Singapura'],['HKD','Dólar de Hong Kong'],['THB','Baht tailandês'],['PHP','Peso filipino'],['PKR','Rupia paquistanesa'],['BDT','Taka bangladeshiano'],['UAH','Hryvnia ucraniana'],['PLN','Zloty polaco'],['SEK','Coroa sueca'],['NOK','Coroa norueguesa'],['DKK','Coroa dinamarquesa'],['RUB','Rublo russo'],['ILS','Novo shekel israelita'],['JOD','Dinar jordaniano'],['KWD','Dinar kuwaitiano'],['OMR','Rial omanense'],['BHD','Dinar bareinita'],['VND','Dong vietnamita'],['MYR','Ringgit malaio'],['LKR','Rupia do Sri Lanka'],['IRR','Rial iraniano'],['DZD','Dinar argelino'],['TND','Dinar tunisino'],['LYD','Dinar líbio'],['PEN','Sol peruano'],['UYU','Peso uruguaio'],['ISK','Coroa islandesa'],['CZK','Coroa checa'],['HUF','Forint húngaro'],['RON','Leu romeno'],['BGN','Lev búlgaro'],['HRK','Kuna croata'],['ALL','Lek albanês'],['GEL','Lari georgiano'],['AZN','Manat azeri'],['KZT','Tenge cazaque'],['UZS','Som uzbeque'],['AFN','Afghani'],['MUR','Rupia mauriciana'],['SCR','Rupia seichelense'],['KMF','Franco comoriano'],['CVE','Escudo cabo-verdiano'],['GMD','Dalasi gambiano'],['SLL','Leone'],['LRD','Dólar liberiano'],['CDF','Franco congolês'],['XPF','Franco CFP']
+  ];
+  const CACHE='driveFxRates_v1_';
+  function init(){
+    const box=document.getElementById('cambioCalc'); if(!box)return;
+    const from=document.getElementById('cambioDe'),to=document.getElementById('cambioPara'),input=document.getElementById('cambioValor'),out=document.getElementById('cambioResultado'),info=document.getElementById('cambioInfo'),swap=document.getElementById('cambioTroca');
+    const language=()=>localStorage.getItem('driveLanguage')==='en';
+    const label=(code,name)=>code+' — '+(language()?englishName(code,name):name);
+    const englishName=(code,pt)=>({MZN:'Mozambican metical',USD:'US dollar',ZAR:'South African rand',TZS:'Tanzanian shilling',MWK:'Malawian kwacha',EUR:'Euro',GBP:'British pound',JPY:'Japanese yen',CNY:'Chinese yuan',INR:'Indian rupee',KES:'Kenyan shilling',UGX:'Ugandan shilling',BWP:'Botswana pula',ZMW:'Zambian kwacha',AOA:'Angolan kwanza',NAD:'Namibian dollar',NGN:'Nigerian naira',BRL:'Brazilian real',CAD:'Canadian dollar',AUD:'Australian dollar',CHF:'Swiss franc'}[code]||pt);
+    function fill(select,selected){select.innerHTML=CURRENCIES.map(([c,n])=>`<option value="${c}">${label(c,n)}</option>`).join('');select.value=selected;}
+    fill(from,'USD');fill(to,'MZN');
+    function fmt(n,c){try{return new Intl.NumberFormat(language()?'en-US':'pt-MZ',{maximumFractionDigits:4}).format(n)+' '+c}catch(_){return n.toFixed(2)+' '+c}}
+    async function rates(base){
+      const key=CACHE+base;let cached=null;try{cached=JSON.parse(localStorage.getItem(key)||'null')}catch(_){}
+      if(cached&&cached.rates&&Date.now()-cached.time<3600000)return cached;
+      try{const response=await fetch('https://open.er-api.com/v6/latest/'+encodeURIComponent(base),{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);const data=await response.json();if(data.result!=='success'||!data.rates)throw Error('Taxas indisponíveis');const result={base:data.base_code||base,rates:data.rates,time:Date.now()};try{localStorage.setItem(key,JSON.stringify(result))}catch(_){}return result}
+      catch(err){if(cached&&cached.rates)return cached;throw err}
+    }
+    let busy=false;
+    async function render(){if(busy)return;const a=from.value,b=to.value,v=Number(input.value);if(!Number.isFinite(v)||v<0){out.textContent='—';return}busy=true;info.textContent=language()?'Loading exchange rate…':'A obter câmbio…';try{const data=await rates(a),r=Number(data.rates[b]);if(!(r>0))throw Error('Currency unavailable');out.textContent=fmt(v*r,b);const stamp=new Date(data.time).toLocaleString(language()?'en-US':'pt-MZ',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});info.textContent=(language()?`1 ${a} ≈ ${r.toLocaleString('en-US',{maximumFractionDigits:6})} ${b} · updated ${stamp}`:`1 ${a} ≈ ${r.toLocaleString('pt-MZ',{maximumFractionDigits:6})} ${b} · atualizado ${stamp}`)}catch(e){out.textContent='—';info.textContent=language()?'Rate unavailable. Check your internet connection.':'Taxa indisponível. Verifica a ligação à internet.'}finally{busy=false}}
+    input.addEventListener('input',render);from.addEventListener('change',render);to.addEventListener('change',render);swap.addEventListener('click',()=>{const x=from.value;from.value=to.value;to.value=x;render()});
+    window.addEventListener('driveLanguageChanged',()=>{const a=from.value,b=to.value;fill(from,a);fill(to,b);render()});
+    render();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
